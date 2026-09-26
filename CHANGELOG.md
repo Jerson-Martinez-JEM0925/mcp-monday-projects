@@ -20,12 +20,16 @@ All notable changes are documented here. The format follows
   boards and items are refused with a typed `ScopeError`, and
   `server_info.workspace_scope` reports the ID and name. Unscoped servers now
   instruct the client to pick a workspace (or ask the user) before writing.
-- **Profiles (#24):** `MCP_PROFILE=<name>` loads `profiles/<name>.env`, a
-  pinned target (token reference via `MONDAY_API_TOKEN_ENV`, workspace,
-  access level, allowlists) that wins over the environment. Tokens are
-  rejected in profile files and unknown keys fail at startup, as in
-  mcp-github-projects. `server_info.profile` reports the active profile; the
-  image mounts profiles at `/profiles` (`MCP_PROFILES_DIR`).
+- **Profiles (#24):** `MCP_PROFILE=<name>` activates a profile from a YAML
+  file (`MCP_PROFILES_FILE`, default `profiles.yaml`), pinning one monday
+  target — token reference via `token_env`, `workspace_id`, `access_level`,
+  `board_allowlist`, `workspace_allowlist`, `report_max_items`, `api_version`.
+  Precedence is explicit environment variable > profile > default. Tokens
+  never appear in the file, and an unknown profile, unknown field or invalid
+  value is a startup error that names the profile, as in mcp-github-projects.
+  `server_info.profile` reports the active profile; `profiles.example.yaml` is
+  committed and `profiles.yaml` is git-ignored. Adds a pinned
+  `gopkg.in/yaml.v3 v3.0.1` dependency.
 - **Structured `.env.example`** with sections and read / write / full presets.
 
 ### Changed

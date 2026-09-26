@@ -1,0 +1,44 @@
+# Example profiles for mcp-monday-projects.
+#
+#   cp profiles.example.yaml profiles.yaml     # profiles.yaml is git-ignored
+#   MCP_PROFILE=devops ./mcp-monday-projects
+#
+# A profile pins ONE monday target. Select it with MCP_PROFILE=<name>. The file
+# location defaults to profiles.yaml next to the binary's working dir; override
+# it with MCP_PROFILES_FILE. In the Docker image mount it read-only, e.g.
+#   docker run --rm -i --env-file .env \
+#     -e MONDAY_TOKEN_DEVOPS=... \
+#     -e MCP_PROFILE=devops \
+#     -e MCP_PROFILES_FILE=/profiles.yaml \
+#     -v "$PWD/profiles.yaml:/profiles.yaml:ro" \
+#     mcp-monday-projects:local
+#
+# Precedence: an explicit environment variable > the profile value > the
+# built-in default. Tokens NEVER go in this file — `token_env` names the
+# environment variable that holds the account's token.
+#
+# See docs/CAPABILITIES.md#profiles.
+
+profiles:
+  # Read-only analyst against the DevOps sandbox workspace.
+  devops:
+    token_env: MONDAY_TOKEN_DEVOPS      # env var holding this account's token
+    workspace_id: 14216815              # confine reads/writes to this workspace
+    access_level: read                  # read | write | full
+    report_max_items: 250               # 1..5000
+    api_version: "2026-07"
+
+  # Day-to-day write access, restricted to two boards.
+  team:
+    token_env: MONDAY_TOKEN_TEAM
+    workspace_id: 14216815
+    access_level: write
+    board_allowlist: [18432840016]      # mutations only on these boards
+    workspace_allowlist: [14216815]     # board/folder creation only here
+
+  # Trusted maintenance profile with permanent deletes, still scoped.
+  admin:
+    token_env: MONDAY_TOKEN_ADMIN
+    workspace_id: 14216815
+    access_level: full
+    board_allowlist: [18432840016]

@@ -68,8 +68,8 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |
-| `MCP_PROFILE` | no | — | Load `profiles/<name>.env`, a pinned target (token reference, workspace, access level, allowlists); see [profiles](docs/CAPABILITIES.md#profiles) |
-| `MCP_PROFILES_DIR` | no | `/profiles` in the image | Directory that holds profile files |
+| `MCP_PROFILE` | no | — | Activate a profile from the profiles file — a pinned target (token reference, workspace, access level, allowlists, report budget, API version); see [profiles](docs/CAPABILITIES.md#profiles) |
+| `MCP_PROFILES_FILE` | no | `profiles.yaml` | Path to the YAML profiles file (mount a file and point this at it in the image) |
 
 See [docs/SETUP.md](docs/SETUP.md) for token handling and API versioning. Confirm the stable version against Monday's [versioning documentation](https://developer.monday.com/api-reference/docs/api-versioning) before upgrades.
 
