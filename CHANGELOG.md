@@ -22,6 +22,12 @@ All notable changes are documented here. The format follows
   instruct the client to pick a workspace (or ask the user) before writing.
 - **Structured `.env.example`** with sections and read / write / full presets.
 
+- **Coverage gate (#25):** `internal/application` 58.7% → 81.5% and
+  `internal/monday` 53.9% → 84.5% with table-driven adapter contract tests
+  (exact variables, omitted nulls, reply mapping, not-found and GraphQL error
+  paths) and a use-case suite run unscoped, scoped, and allowlisted.
+  `scripts/coverage_gate.sh` fails CI and `make validate` below 80%.
+
 ### Changed
 
 - `MCP_READ_ONLY` is a deprecated alias of `MCP_ACCESS_LEVEL=read`.

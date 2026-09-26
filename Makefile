@@ -63,7 +63,11 @@ vet: ## Run go vet inside Docker
 	docker build --target builder -t $(IMAGE)-builder .
 	docker run --rm $(IMAGE)-builder go vet ./...
 
-validate: build test race fmt-check vet ## Run the complete local validation suite
+coverage: ## Enforce >= 80% statement coverage on application and monday
+	docker build --target builder -t $(IMAGE)-builder .
+	docker run --rm $(IMAGE)-builder sh scripts/coverage_gate.sh
+
+validate: build test race fmt-check vet coverage ## Run the complete local validation suite
 	@echo "Validation passed"
 
 clean: ## Remove local images and Compose resources

@@ -32,6 +32,8 @@ jobs:
         run: docker run --rm mcp-monday-projects:checks go mod verify
       - name: Test
         run: docker run --rm mcp-monday-projects:checks go test ./...
+      - name: Coverage gate (application, monday >= 80%)
+        run: docker run --rm mcp-monday-projects:checks sh scripts/coverage_gate.sh
       - name: Build race validation image
         run: docker build --target race-builder -t mcp-monday-projects:race .
       - name: Race test
