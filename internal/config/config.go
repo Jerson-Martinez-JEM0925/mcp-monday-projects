@@ -21,6 +21,14 @@ type Config struct {
 	HTTPTimeout      time.Duration
 	MaxResponseBytes int64
 	MaxRetries       int
+	// ReadOnly disables every mutation tool (they are not even registered).
+	ReadOnly bool
+	// WriteBoardAllowlist restricts mutations to these board IDs when set.
+	WriteBoardAllowlist []string
+	// WriteWorkspaceAllowlist restricts board/folder creation to these workspaces.
+	WriteWorkspaceAllowlist []string
+	// ReportMaxItems bounds how many items a report loads per board.
+	ReportMaxItems int
 }
 
 // Load reads and validates configuration from environment variables.
@@ -49,15 +57,55 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("MCP_MAX_RETRIES must be between 0 and 5")
 	}
 
+	readOnly, err := strconv.ParseBool(valueOrDefault("MCP_READ_ONLY", "false"))
+	if err != nil {
+		return Config{}, fmt.Errorf("MCP_READ_ONLY must be true or false")
+	}
+	boards, err := parseIDList("MONDAY_WRITE_BOARD_ALLOWLIST")
+	if err != nil {
+		return Config{}, err
+	}
+	workspaces, err := parseIDList("MONDAY_WRITE_WORKSPACE_ALLOWLIST")
+	if err != nil {
+		return Config{}, err
+	}
+	reportMax, err := parseInt64("MCP_REPORT_MAX_ITEMS", 500)
+	if err != nil || reportMax < 1 || reportMax > 5000 {
+		return Config{}, fmt.Errorf("MCP_REPORT_MAX_ITEMS must be between 1 and 5000")
+	}
+
 	return Config{
-		APIToken:         token,
-		APIVersion:       valueOrDefault("MONDAY_API_VERSION", defaultAPIVersion),
-		APIURL:           apiURL,
-		LogLevel:         valueOrDefault("MCP_LOG_LEVEL", "info"),
-		HTTPTimeout:      timeout,
-		MaxResponseBytes: maxResponseBytes,
-		MaxRetries:       int(retries),
+		APIToken:                token,
+		APIVersion:              valueOrDefault("MONDAY_API_VERSION", defaultAPIVersion),
+		APIURL:                  apiURL,
+		LogLevel:                valueOrDefault("MCP_LOG_LEVEL", "info"),
+		HTTPTimeout:             timeout,
+		MaxResponseBytes:        maxResponseBytes,
+		MaxRetries:              int(retries),
+		ReadOnly:                readOnly,
+		WriteBoardAllowlist:     boards,
+		WriteWorkspaceAllowlist: workspaces,
+		ReportMaxItems:          int(reportMax),
 	}, nil
+}
+
+func parseIDList(name string) ([]string, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return nil, nil
+	}
+	var ids []string
+	for _, part := range strings.Split(raw, ",") {
+		id := strings.TrimSpace(part)
+		if id == "" {
+			continue
+		}
+		if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+			return nil, fmt.Errorf("%s must be a comma-separated list of numeric IDs", name)
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func valueOrDefault(name, fallback string) string {

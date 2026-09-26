@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jersonmartinez/mcp-monday-projects/internal/config"
@@ -41,6 +42,27 @@ type GraphQLResponse struct {
 	Data      json.RawMessage `json:"data"`
 	Errors    []GraphQLError  `json:"errors,omitempty"`
 	AccountID int64           `json:"account_id,omitempty"`
+	// Legacy top-level error envelope still used by some monday failures.
+	ErrorCode    string `json:"error_code,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
+}
+
+func newRequestError(gqlErr GraphQLError) *RequestError {
+	reqErr := &RequestError{Message: gqlErr.Message}
+	if code, ok := gqlErr.Extra["code"].(string); ok {
+		reqErr.Code = code
+	}
+	if seconds, ok := gqlErr.Extra["retry_in_seconds"].(float64); ok && seconds > 0 {
+		reqErr.RetryAfter = min(time.Duration(seconds)*time.Second, 30*time.Second)
+	}
+	if len(gqlErr.Path) > 0 {
+		parts := make([]string, 0, len(gqlErr.Path))
+		for _, part := range gqlErr.Path {
+			parts = append(parts, fmt.Sprint(part))
+		}
+		reqErr.Path = strings.Join(parts, ".")
+	}
+	return reqErr
 }
 
 // NewClient creates a reusable Monday GraphQL client.
@@ -60,7 +82,7 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 	if query == "" {
 		return fmt.Errorf("graphql query cannot be empty")
 	}
-	payload, err := json.Marshal(GraphQLRequest{Query: query, Variables: variables})
+	payload, err := json.Marshal(GraphQLRequest{Query: query, Variables: compactVariables(variables)})
 	if err != nil {
 		return fmt.Errorf("marshal graphql request: %w", err)
 	}
@@ -120,7 +142,18 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 			return fmt.Errorf("decode monday response: %w", err)
 		}
 		if len(envelope.Errors) > 0 {
-			return fmt.Errorf("monday graphql request failed: %s", envelope.Errors[0].Message)
+			reqErr := newRequestError(envelope.Errors[0])
+			if reqErr.Temporary() && attempt < c.maxRetries {
+				lastErr = reqErr
+				if err := waitForRetry(ctx, attempt, reqErr.RetryAfter); err != nil {
+					return err
+				}
+				continue
+			}
+			return reqErr
+		}
+		if envelope.ErrorCode != "" {
+			return &RequestError{Code: envelope.ErrorCode, Message: envelope.ErrorMessage}
 		}
 		if output == nil {
 			return nil
@@ -131,6 +164,23 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 		return nil
 	}
 	return lastErr
+}
+
+// compactVariables drops nil variables. An omitted nullable variable means
+// "argument not provided", while an explicit null is rejected by some monday
+// resolvers (for example users(page: null) returns an internal error).
+func compactVariables(variables map[string]any) map[string]any {
+	if len(variables) == 0 {
+		return nil
+	}
+	compact := make(map[string]any, len(variables))
+	for key, value := range variables {
+		if value == nil {
+			continue
+		}
+		compact[key] = value
+	}
+	return compact
 }
 
 func retryAfter(value string) time.Duration {
