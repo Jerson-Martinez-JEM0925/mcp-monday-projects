@@ -84,7 +84,10 @@ func (f *FakePort) GetWorkspace(_ context.Context, id string) (*domain.Workspace
 func (f *FakePort) CreateWorkspace(_ context.Context, name, kind, _ string) (*domain.Workspace, error) {
 	return &domain.Workspace{ID: f.id(), Name: name, Kind: kind}, f.record("create_workspace")
 }
-func (f *FakePort) ListFolders(context.Context, string, int, int) ([]domain.Folder, error) {
+func (f *FakePort) ListFolders(_ context.Context, workspaceID string, _, _ int) ([]domain.Folder, error) {
+	if workspaceID == "7" {
+		return []domain.Folder{{ID: "301", Name: "Ops"}}, nil
+	}
 	return nil, nil
 }
 func (f *FakePort) CreateFolder(_ context.Context, _, name string) (*domain.Folder, error) {
@@ -274,7 +277,7 @@ func (f *FakePort) ListTeams(context.Context, []string) ([]domain.Team, error) {
 	return []domain.Team{{ID: "3", Name: "Ops"}}, nil
 }
 func (f *FakePort) ListItemUpdates(context.Context, string, int) ([]domain.Update, error) {
-	return []domain.Update{{ID: "u1"}}, nil
+	return []domain.Update{{ID: "77"}}, nil
 }
 func (f *FakePort) ListBoardUpdates(context.Context, string, int) ([]domain.Update, error) {
 	return []domain.Update{{ID: "u1"}}, nil
@@ -294,3 +297,17 @@ func (f *FakePort) CreateOrGetTag(_ context.Context, _, name string) (*domain.Ta
 }
 
 var _ application.Port = (*FakePort)(nil)
+
+func (f *FakePort) DeleteItem(context.Context, string) error { return f.record("delete_item") }
+func (f *FakePort) DeleteGroup(context.Context, string, string) error {
+	return f.record("delete_group")
+}
+func (f *FakePort) DeleteBoard(context.Context, string) error { return f.record("delete_board") }
+func (f *FakePort) DeleteColumn(context.Context, string, string) error {
+	return f.record("delete_column")
+}
+func (f *FakePort) DeleteUpdate(context.Context, string) error { return f.record("delete_update") }
+func (f *FakePort) DeleteFolder(context.Context, string) error { return f.record("delete_folder") }
+func (f *FakePort) DeleteWorkspace(context.Context, string) error {
+	return f.record("delete_workspace")
+}

@@ -16,7 +16,9 @@ type ToolSpec struct {
 	Description string `json:"description"`
 	ReadOnly    bool   `json:"read_only"`
 	Destructive bool   `json:"destructive"`
-	Capability  string `json:"capability"`
+	// Permanent marks irreversible deletes, registered only at access level full.
+	Permanent  bool   `json:"permanent,omitempty"`
+	Capability string `json:"capability"`
 }
 
 // Tool categories, in catalog order.
@@ -33,28 +35,30 @@ const (
 	CatCollab      = "collaboration"
 	CatTags        = "tags"
 	CatReports     = "reports"
+	CatDeletes     = "deletes"
 )
 
 // CategoryOrder is the documented order of categories.
-var CategoryOrder = []string{CatDiagnostics, CatWorkspaces, CatBoards, CatGroups, CatColumns, CatItemsRead, CatItemsWrite, CatBulk, CatPeople, CatCollab, CatTags, CatReports}
+var CategoryOrder = []string{CatDiagnostics, CatWorkspaces, CatBoards, CatGroups, CatColumns, CatItemsRead, CatItemsWrite, CatBulk, CatPeople, CatCollab, CatTags, CatReports, CatDeletes}
 
 type registry struct {
 	server   *mcp.Server
 	svc      *application.Service
 	readOnly bool
+	full     bool
 	specs    []ToolSpec
 	skipped  []ToolSpec
 }
 
 func boolPtr(value bool) *bool { return &value }
 
-// add registers a typed tool. Mutating tools are skipped in read-only mode so
-// clients never see them.
+// add registers a typed tool. Mutating tools are skipped at access level read
+// and permanent deletes below access level full, so clients never see them.
 func add[In, Out any](r *registry, spec ToolSpec, fn func(context.Context, In) (Out, error)) {
 	if spec.Capability == "" {
 		spec.Capability = defaultCapability(spec)
 	}
-	if !spec.ReadOnly && r.readOnly {
+	if (!spec.ReadOnly && r.readOnly) || (spec.Permanent && !r.full) {
 		r.skipped = append(r.skipped, spec)
 		return
 	}

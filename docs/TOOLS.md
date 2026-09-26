@@ -22,7 +22,7 @@ and an actionable message; the token and raw API payloads are never echoed.
 
 <!-- tools:begin -->
 
-_72 tools, generated from `list_tool_catalog`._
+_79 tools, generated from `list_tool_catalog`._
 
 ### Diagnostics
 
@@ -31,7 +31,7 @@ _72 tools, generated from `list_tool_catalog`._
 | `get_api_status` | read | `account.read` | Return monday's remaining per-minute complexity budget, reset time, and the API version that served the request. |
 | `get_me` | read | `account.read` | Return the user and account behind the configured token (connectivity check). Never returns the token. |
 | `list_tool_catalog` | read | `account.read` | List every registered tool with its category, read-only/destructive hints, and required capability. Optionally filter by category. |
-| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, the effective write policy (read-only mode and allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name. |
+| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name. |
 
 ### Workspaces and folders
 
@@ -155,6 +155,18 @@ _72 tools, generated from `list_tool_catalog`._
 | `stale_items` | read | `reports.read` | List open items with no update for N days (default 14). |
 | `workload_report` | read | `reports.read` | Open, done, overdue, and blocked items per assignee of the owner column. |
 | `workspace_overview` | read | `reports.read` | Overview of a workspace: active boards (excluding subitem boards), item totals, and URLs. |
+
+### Permanent deletes (MCP_ACCESS_LEVEL=full)
+
+| Tool | Mode | Capability | Description |
+|---|---|---|---|
+| `delete_board` | full · permanent delete | `boards.delete` | PERMANENTLY delete a board (MCP_ACCESS_LEVEL=full). Requires confirm=true; prefer archive_board. |
+| `delete_column` | full · permanent delete | `columns.delete` | PERMANENTLY delete a column and all of its values (MCP_ACCESS_LEVEL=full). Requires confirm=true. The name column cannot be deleted. |
+| `delete_folder` | full · permanent delete | `workspaces.delete` | PERMANENTLY delete a workspace folder and the boards inside it (MCP_ACCESS_LEVEL=full). Requires confirm=true. |
+| `delete_group` | full · permanent delete | `groups.delete` | PERMANENTLY delete a group and all of its items (MCP_ACCESS_LEVEL=full). Requires confirm=true; prefer archive_group. |
+| `delete_item` | full · permanent delete | `items.delete` | PERMANENTLY delete an item or subitem (MCP_ACCESS_LEVEL=full). Requires confirm=true; prefer archive_item to keep it restorable. |
+| `delete_update` | full · permanent delete | `updates.delete` | PERMANENTLY delete an update or reply of an item (MCP_ACCESS_LEVEL=full). Requires confirm=true and the owning item_id. |
+| `delete_workspace` | full · permanent delete | `workspaces.delete` | PERMANENTLY delete a workspace and everything in it (MCP_ACCESS_LEVEL=full). Requires confirm=true. Refused when MONDAY_WORKSPACE_ID or a write allowlist is set. |
 
 <!-- tools:end -->
 
