@@ -2,17 +2,23 @@
 """Reproducible real-account smoke suite for mcp-monday-projects.
 
 Drives the containerized MCP server over stdio exactly like an MCP client
-would, and records a pass/fail line per tool call. It never deletes
-anything: the only destructive verb it uses is archive, and only on items
-the suite itself created inside the sandbox board.
+would, and records a pass/fail line per tool call. By default it never
+deletes anything: the only destructive verb it uses is archive, and only on
+items the suite itself created inside the sandbox board. Permanent deletes
+run only with the explicit --allow-delete flag, and only on an item the
+suite creates in that same run.
 
 Phases
   read       Always. Account, API budget, catalog, workspaces, boards,
              users, teams, tags, formats, templates. No writes.
-  guard      Always. Proves read-only mode hides write tools and that the
-             allowlist refuses a board outside it before calling monday.
+  guard      Always. Proves MCP_ACCESS_LEVEL=read hides write tools, that
+             write hides delete tools, that full still refuses a delete
+             without confirm=true, and that the allowlist refuses a board
+             outside it before calling monday.
   sandbox    With --board. Full write/read/report cycle on ONE sandbox
              board, with MONDAY_WRITE_BOARD_ALLOWLIST pinned to it.
+  delete     With --board and --allow-delete. Creates one item and
+             permanently deletes it (MCP_ACCESS_LEVEL=full, confirm=true).
   provision  With --provision. Creates a board from the "devops" template
              in --workspace (allowlisted) with validated seed items.
 
@@ -115,12 +121,26 @@ def read_phase(suite: Suite) -> dict:
 
 
 def guard_phase(suite: Suite, board: str | None) -> None:
-    ro = Session(["MCP_READ_ONLY=true"])
+    ro = Session(["MCP_ACCESS_LEVEL=read", "MCP_READ_ONLY="])
     try:
-        suite.run(ro, "guard", "server_info", {}, check=lambda p: (p["write_policy"]["read_only"] and p["hidden_write_tools"] > 0) or p)
+        suite.run(ro, "guard", "server_info", {}, check=lambda p: (p["access_level"] == "read" and p["write_policy"]["read_only"] and p["hidden_write_tools"] > 0) or p)
         suite.run(ro, "guard", "create_item", {"board_id": "1", "name": "x"}, expect_error=True)
     finally:
         ro.close()
+    write = Session(["MCP_ACCESS_LEVEL=write", "MCP_READ_ONLY="])
+    try:
+        suite.run(write, "guard", "server_info", {}, check=lambda p: p["access_level"] == "write" or p)
+        # Delete tools are not registered below full.
+        suite.run(write, "guard", "delete_item", {"item_id": "1", "confirm": True}, expect_error=True)
+    finally:
+        write.close()
+    full = Session(["MCP_ACCESS_LEVEL=full", "MCP_READ_ONLY="])
+    try:
+        suite.run(full, "guard", "server_info", {}, check=lambda p: p["access_level"] == "full" or p)
+        # Registered at full, but refused locally without confirm=true.
+        suite.run(full, "guard", "delete_item", {"item_id": "1"}, expect_error=True)
+    finally:
+        full.close()
     if board:
         guarded = Session([f"MONDAY_WRITE_BOARD_ALLOWLIST={board}"])
         try:
@@ -268,6 +288,22 @@ def sandbox_phase(suite: Suite, board: str, assign_user: str | None, notify_user
     return ctx
 
 
+def delete_phase(suite: Suite, board: str) -> None:
+    """Create one throwaway item and permanently delete it (opt-in only)."""
+    s = Session([f"MONDAY_WRITE_BOARD_ALLOWLIST={board}", "MCP_ACCESS_LEVEL=full", "MCP_READ_ONLY="])
+    try:
+        stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+        created = suite.run(s, "delete", "create_item", {"board_id": board, "name": f"[smoke delete {stamp}] throwaway"})
+        item_id = ((created or {}).get("item") or {}).get("id")
+        if not item_id:
+            return
+        suite.run(s, "delete", "delete_item", {"item_id": item_id}, expect_error=True)  # confirm missing
+        suite.run(s, "delete", "delete_item", {"item_id": item_id, "confirm": True}, check=lambda p: p["ok"] or p)
+        suite.run(s, "delete", "get_item", {"item_id": item_id}, expect_error=True)
+    finally:
+        s.close()
+
+
 def provision_phase(suite: Suite, workspace: str, assign_user: str | None) -> dict:
     s = Session([f"MONDAY_WRITE_WORKSPACE_ALLOWLIST={workspace}", "MONDAY_WRITE_BOARD_ALLOWLIST=1"])
     today = dt.date.today()
@@ -302,6 +338,7 @@ def main() -> int:
     parser.add_argument("--provision", action="store_true", help="create a devops template board in --workspace")
     parser.add_argument("--assign-user", help="user ID to assign as owner in sandbox items")
     parser.add_argument("--notify-user", help="user ID to receive one test notification")
+    parser.add_argument("--allow-delete", action="store_true", help="with --board: create one item and permanently delete it")
     parser.add_argument("--report", help="write a Markdown report to this path")
     args = parser.parse_args()
 
@@ -315,6 +352,10 @@ def main() -> int:
         meta["Sandbox board"] = ctx.get("board_url") or args.board
         if ctx.get("health"):
             meta["Sandbox health"] = f"{ctx['health'].get('score')}/100 (grade {ctx['health'].get('grade')})"
+    if args.allow_delete:
+        if not args.board:
+            parser.error("--allow-delete requires --board")
+        delete_phase(suite, args.board)
     if args.provision:
         if not args.workspace:
             parser.error("--provision requires --workspace")

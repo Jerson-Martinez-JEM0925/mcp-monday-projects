@@ -12,10 +12,11 @@ and an actionable message; the token and raw API payloads are never echoed.
 | IDs | monday IDs are numeric strings (`"1234567890"`). Non-numeric IDs are rejected before any API call. |
 | Pagination | List tools take `limit` (bounded, default 25) and `page`; item tools return a `cursor` and `has_more`. Pass the cursor back to continue. |
 | Column values | Write tools accept friendly values (`"Done"`, `"2026-10-01"`, `[user_id]`) and validate them against the board schema. See [COLUMN_VALUES.md](COLUMN_VALUES.md). |
-| Safe writes | There is no delete tool. Destructive verbs archive (restorable from monday). `archive_board` and `archive_group` require `confirm: true`. |
+| Safe writes | Destructive verbs archive by default (restorable from monday); `archive_board` and `archive_group` require `confirm: true`. Permanent `delete_*` tools exist only at `MCP_ACCESS_LEVEL=full` and require `confirm: true`. |
 | Bulk | Bulk tools accept at most 50 rows and default to `dry_run: true`. A bulk update writes nothing if any row is invalid. |
 | Workspace scope | `MONDAY_WORKSPACE_ID=<id>` confines every read and write to one workspace; `workspace_id` arguments default to it. See [CAPABILITIES.md](CAPABILITIES.md#workspace-scope). |
-| Write policy | `MCP_READ_ONLY=true` hides every write tool. `MONDAY_WRITE_BOARD_ALLOWLIST` / `MONDAY_WRITE_WORKSPACE_ALLOWLIST` restrict mutations. See [CAPABILITIES.md](CAPABILITIES.md). |
+| Access level | `MCP_ACCESS_LEVEL=read\|write\|full` decides which tools are registered. See [CAPABILITIES.md](CAPABILITIES.md#access-levels). |
+| Write policy | `MONDAY_WRITE_BOARD_ALLOWLIST` / `MONDAY_WRITE_WORKSPACE_ALLOWLIST` restrict mutations. See [CAPABILITIES.md](CAPABILITIES.md). |
 | Annotations | Each tool advertises MCP `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` so clients can gate confirmations. |
 
 ## Catalog

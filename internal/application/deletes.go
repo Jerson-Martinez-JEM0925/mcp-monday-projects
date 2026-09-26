@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // ErrDeletesDisabled is returned when a permanent delete is requested while
@@ -21,7 +22,11 @@ func (s *Service) requireDelete(resource, alternative string, confirm bool) erro
 		if alternative != "" {
 			hint = fmt.Sprintf(", or use %s to keep it restorable", alternative)
 		}
-		return invalid("deleting a %s is permanent and cannot be undone; pass confirm=true%s", resource, hint)
+		article := "a"
+		if strings.ContainsRune("aeiou", rune(resource[0])) {
+			article = "an"
+		}
+		return invalid("deleting %s %s is permanent and cannot be undone; pass confirm=true%s", article, resource, hint)
 	}
 	return s.guard.CheckWrite()
 }

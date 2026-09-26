@@ -9,10 +9,10 @@ A high-performance, Docker-first [Model Context Protocol](https://modelcontextpr
 
 ## Features
 
-- **72 typed MCP tools** across workspaces, boards, groups, columns, items, bulk operations, users and teams, updates, tags, and reports — plus 2 reusable prompts.
+- **79 typed MCP tools** (72 at the default access level, plus 7 permanent deletes at `full`) across workspaces, boards, groups, columns, items, bulk operations, users and teams, updates, tags, and reports — plus 2 reusable prompts.
 - **Validated writes** — friendly column values (`"Done"`, `"2026-10-01"`, `[user_id]`) are checked against the live board schema and converted to monday JSON before any mutation. See [docs/COLUMN_VALUES.md](docs/COLUMN_VALUES.md).
-- **Safe by construction** — no delete tools, archive-only destructive verbs, `confirm` gates, bulk operations capped at 50 rows with `dry_run: true` by default and all-or-nothing validation.
-- **Write policy** — `MCP_READ_ONLY` hides every write tool; board and workspace allowlists fence mutations. See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
+- **Safe by construction** — archive by default, permanent deletes only at `MCP_ACCESS_LEVEL=full` with `confirm: true`, `confirm` gates on board/group archive, bulk operations capped at 50 rows with `dry_run: true` by default and all-or-nothing validation.
+- **Access levels and write policy** — `MCP_ACCESS_LEVEL=read|write|full` decides which tools exist; `MONDAY_WORKSPACE_ID` confines the server to one workspace; board and workspace allowlists fence mutations. See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
 - **Operational reports** — summary, workload, overdue, stale, standup, 0–100 health score, Markdown/CSV export, workspace overview. See [docs/REPORTS.md](docs/REPORTS.md).
 - **Board templates** — `provision_board_from_template` builds DevOps, incident, release, or project boards with typed columns, ordered groups, and validated seed items in one call.
 - **Self-describing** — `list_tool_catalog` returns every tool with category, capability, and read-only/destructive hints; MCP annotations are set on every tool.
@@ -47,6 +47,7 @@ Only Docker and Docker Compose are required on the host. Go, tests, formatting, 
 | People | `list_users`, `search_users`, `get_user`, `list_teams` |
 | Collaboration | `list_item_updates`, `list_board_updates`, `create_update`, `reply_to_update`, `like_update`, `notify_user` |
 | Tags | `list_tags`, `create_or_get_tag` |
+| Permanent deletes (`full` only) | `delete_item`, `delete_group`, `delete_board`, `delete_column`, `delete_update`, `delete_folder`, `delete_workspace` |
 | Reports | `board_summary`, `column_distribution`, `workload_report`, `overdue_items`, `stale_items`, `daily_standup`, `board_health_report`, `export_board_markdown`, `export_board_csv`, `workspace_overview` |
 
 Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
@@ -62,7 +63,8 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MCP_MAX_RESPONSE_BYTES` | no | `4194304` | Response size limit |
 | `MCP_MAX_RETRIES` | no | `2` | Bounded retries for transient HTTP/complexity failures |
 | `MONDAY_WORKSPACE_ID` | no | — | Confine every read and write to this workspace ID; see [workspace scope](docs/CAPABILITIES.md#workspace-scope) |
-| `MCP_READ_ONLY` | no | `false` | Hide every write tool |
+| `MCP_ACCESS_LEVEL` | no | `write` | `read` (read tools only), `write` (create/update/archive), or `full` (also permanent deletes); see [access levels](docs/CAPABILITIES.md#access-levels) |
+| `MCP_READ_ONLY` | no | `false` | Deprecated alias of `MCP_ACCESS_LEVEL=read` |
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |

@@ -49,7 +49,7 @@ client that supports stdio. The client starts one container per session:
 }
 ```
 
-Add `-e MCP_READ_ONLY=true` (or an allowlist, see
+Add `-e MCP_ACCESS_LEVEL=read` (or `full`, a workspace scope, or an allowlist, see
 [CAPABILITIES.md](CAPABILITIES.md)) to the `args` for a restricted profile.
 Clients that honor MCP tool annotations can require confirmation for tools
 with `destructiveHint: true`.
@@ -63,7 +63,7 @@ make probe TOOL=get_api_status
 ```
 
 `scripts/mcp_probe.py` accepts `-e NAME=VALUE` to test a policy, for example
-`python3 scripts/mcp_probe.py --list -e MCP_READ_ONLY=true`.
+`python3 scripts/mcp_probe.py --list -e MCP_ACCESS_LEVEL=read`.
 
 ## Real-account smoke suite
 
