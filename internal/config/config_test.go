@@ -65,6 +65,7 @@ func TestLoadRejectsInvalidWritePolicy(t *testing.T) {
 		"MONDAY_WRITE_BOARD_ALLOWLIST":     "12,abc",
 		"MONDAY_WRITE_WORKSPACE_ALLOWLIST": "-1",
 		"MCP_REPORT_MAX_ITEMS":             "0",
+		"MONDAY_WORKSPACE_ID":              "DevOps",
 	}
 	for name, value := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -74,5 +75,22 @@ func TestLoadRejectsInvalidWritePolicy(t *testing.T) {
 				t.Fatalf("Load() accepted %s=%s", name, value)
 			}
 		})
+	}
+}
+
+func TestLoadWorkspaceScope(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "test-token")
+	t.Setenv("MONDAY_WORKSPACE_ID", " 14216815 ")
+	cfg, err := Load()
+	if err != nil || cfg.WorkspaceID != "14216815" {
+		t.Fatalf("WorkspaceID = %q, err = %v", cfg.WorkspaceID, err)
+	}
+	t.Setenv("MONDAY_WORKSPACE_ID", "")
+	if cfg, err := Load(); err != nil || cfg.WorkspaceID != "" {
+		t.Fatalf("unset scope = %q, err = %v", cfg.WorkspaceID, err)
+	}
+	t.Setenv("MONDAY_WORKSPACE_ID", "1,2")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() accepted a list for MONDAY_WORKSPACE_ID")
 	}
 }

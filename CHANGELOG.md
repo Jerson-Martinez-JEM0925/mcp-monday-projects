@@ -4,6 +4,16 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Workspace scope (#20):** `MONDAY_WORKSPACE_ID` confines every read and
+  write to one workspace. An omitted `workspace_id` defaults to it, foreign
+  boards and items are refused with a typed `ScopeError`, and
+  `server_info.workspace_scope` reports the ID and name. Unscoped servers now
+  instruct the client to pick a workspace (or ask the user) before writing.
+
 ## [0.2.0] — Operational MVP
 
 Epic #14. Closes #15, #16, #17, #18.

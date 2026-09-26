@@ -169,6 +169,8 @@ func (s *Service) Notify(ctx context.Context, userID, targetID, targetType, text
 		}
 	} else if err := s.guard.CheckWrite(); err != nil {
 		return err
+	} else if s.scope != "" {
+		return invalid("target_type=Post cannot be verified against MONDAY_WORKSPACE_ID; notify about the item (target_type=Project) instead")
 	}
 	return s.port.CreateNotification(ctx, userID, targetID, targetType, text)
 }
@@ -348,7 +350,7 @@ func (s *Service) BuildWorkspaceOverview(ctx context.Context, workspaceID string
 	if err != nil {
 		return nil, err
 	}
-	boards, err := s.port.ListBoardsPage(ctx, monday.BoardQuery{Limit: 100, WorkspaceIDs: []string{workspaceID}, State: "active"})
+	boards, err := s.port.ListBoardsPage(ctx, monday.BoardQuery{Limit: 100, WorkspaceIDs: []string{workspace.ID}, State: "active"})
 	if err != nil {
 		return nil, err
 	}

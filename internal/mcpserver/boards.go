@@ -31,7 +31,7 @@ type ListWorkspacesOutput struct {
 
 // WorkspaceIDInput identifies a workspace.
 type WorkspaceIDInput struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"monday workspace identifier"`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"monday workspace identifier; defaults to MONDAY_WORKSPACE_ID when the server is scoped"`
 }
 
 // WorkspaceOutput wraps one workspace.
@@ -61,7 +61,7 @@ type FoldersOutput struct {
 
 // CreateFolderInput creates a folder.
 type CreateFolderInput struct {
-	WorkspaceID string `json:"workspace_id" jsonschema:"workspace that will own the folder"`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"workspace that will own the folder; defaults to MONDAY_WORKSPACE_ID when the server is scoped"`
 	Name        string `json:"name" jsonschema:"folder name"`
 }
 
@@ -108,7 +108,7 @@ type BoardSchemaOutput struct {
 // CreateBoardInput creates a board.
 type CreateBoardInput struct {
 	Name        string `json:"name" jsonschema:"board name"`
-	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"workspace that will own the board"`
+	WorkspaceID string `json:"workspace_id,omitempty" jsonschema:"workspace that will own the board; defaults to MONDAY_WORKSPACE_ID when the server is scoped"`
 	FolderID    string `json:"folder_id,omitempty" jsonschema:"optional folder"`
 	BoardKind   string `json:"board_kind,omitempty" jsonschema:"public (default), private, or share"`
 	Description string `json:"description,omitempty" jsonschema:"optional description"`
@@ -166,7 +166,7 @@ type TemplatesOutput struct {
 type ProvisionInput struct {
 	Template    string                `json:"template" jsonschema:"template key: devops, incident, release, or project"`
 	Name        string                `json:"name,omitempty" jsonschema:"board name (defaults to the template title)"`
-	WorkspaceID string                `json:"workspace_id,omitempty" jsonschema:"workspace that will own the board"`
+	WorkspaceID string                `json:"workspace_id,omitempty" jsonschema:"workspace that will own the board; defaults to MONDAY_WORKSPACE_ID when the server is scoped"`
 	BoardKind   string                `json:"board_kind,omitempty" jsonschema:"public (default), private, or share"`
 	Description string                `json:"description,omitempty" jsonschema:"board description"`
 	SeedItems   []domain.TemplateItem `json:"seed_items,omitempty" jsonschema:"optional items to create; values use friendly column formats"`

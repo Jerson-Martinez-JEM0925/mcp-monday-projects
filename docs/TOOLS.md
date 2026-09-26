@@ -14,6 +14,7 @@ and an actionable message; the token and raw API payloads are never echoed.
 | Column values | Write tools accept friendly values (`"Done"`, `"2026-10-01"`, `[user_id]`) and validate them against the board schema. See [COLUMN_VALUES.md](COLUMN_VALUES.md). |
 | Safe writes | There is no delete tool. Destructive verbs archive (restorable from monday). `archive_board` and `archive_group` require `confirm: true`. |
 | Bulk | Bulk tools accept at most 50 rows and default to `dry_run: true`. A bulk update writes nothing if any row is invalid. |
+| Workspace scope | `MONDAY_WORKSPACE_ID=<id>` confines every read and write to one workspace; `workspace_id` arguments default to it. See [CAPABILITIES.md](CAPABILITIES.md#workspace-scope). |
 | Write policy | `MCP_READ_ONLY=true` hides every write tool. `MONDAY_WRITE_BOARD_ALLOWLIST` / `MONDAY_WRITE_WORKSPACE_ALLOWLIST` restrict mutations. See [CAPABILITIES.md](CAPABILITIES.md). |
 | Annotations | Each tool advertises MCP `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` so clients can gate confirmations. |
 
@@ -30,7 +31,7 @@ _72 tools, generated from `list_tool_catalog`._
 | `get_api_status` | read | `account.read` | Return monday's remaining per-minute complexity budget, reset time, and the API version that served the request. |
 | `get_me` | read | `account.read` | Return the user and account behind the configured token (connectivity check). Never returns the token. |
 | `list_tool_catalog` | read | `account.read` | List every registered tool with its category, read-only/destructive hints, and required capability. Optionally filter by category. |
-| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, and the effective write policy (read-only mode and allowlists). |
+| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, the effective write policy (read-only mode and allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name. |
 
 ### Workspaces and folders
 

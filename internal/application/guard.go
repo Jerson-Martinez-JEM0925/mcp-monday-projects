@@ -137,7 +137,7 @@ func (s *Service) checkItem(ctx context.Context, itemID string) (string, error) 
 	if err := s.guard.CheckWrite(); err != nil {
 		return "", err
 	}
-	if !s.guard.Restricted() {
+	if !s.guard.Restricted() && s.scope == "" {
 		return "", nil
 	}
 	items, err := s.port.GetItems(ctx, []string{itemID})
@@ -156,6 +156,7 @@ type Service struct {
 	guard          *WriteGuard
 	now            func() time.Time
 	reportMaxItems int
+	scope          string
 }
 
 // Options configures a Service.
@@ -163,6 +164,8 @@ type Options struct {
 	Guard          *WriteGuard
 	Now            func() time.Time
 	ReportMaxItems int
+	// WorkspaceScope confines every call to one workspace (MONDAY_WORKSPACE_ID).
+	WorkspaceScope string
 }
 
 // NewService builds the application service.
@@ -176,7 +179,21 @@ func NewService(port Port, options Options) *Service {
 	if options.ReportMaxItems <= 0 {
 		options.ReportMaxItems = 500
 	}
-	return &Service{port: port, guard: options.Guard, now: options.Now, reportMaxItems: options.ReportMaxItems}
+	if options.WorkspaceScope != "" {
+		port = NewScopedPort(port, options.WorkspaceScope)
+	}
+	return &Service{port: port, guard: options.Guard, now: options.Now, reportMaxItems: options.ReportMaxItems, scope: options.WorkspaceScope}
+}
+
+// WorkspaceScope returns the configured workspace scope, or "" when unscoped.
+func (s *Service) WorkspaceScope() string { return s.scope }
+
+// scopedWorkspace defaults an omitted workspace argument to the scope.
+func (s *Service) scopedWorkspace(id string) string {
+	if id == "" {
+		return s.scope
+	}
+	return id
 }
 
 // Guard exposes the write guard for diagnostics.

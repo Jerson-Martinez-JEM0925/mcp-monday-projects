@@ -188,3 +188,48 @@ func TestNewFromConfigBuildsServer(t *testing.T) {
 		t.Fatal("New() returned nil")
 	}
 }
+
+func TestWorkspaceScopeIsReportedAndEnforced(t *testing.T) {
+	port := applicationtest.NewFakePort()
+	port.Columns["200"] = port.Columns["100"]
+	port.BoardWorkspace["200"] = "8"
+	svc := application.NewService(port, application.Options{WorkspaceScope: "7"})
+	server, _ := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", ReportMaxItems: 500})
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	if !strings.Contains(session.InitializeResult().Instructions, "MONDAY_WORKSPACE_ID") {
+		t.Fatalf("instructions do not mention the scope: %q", session.InitializeResult().Instructions)
+	}
+	_, info := call(t, session, "server_info", nil)
+	scope, _ := info["workspace_scope"].(map[string]any)
+	if scope["id"] != "7" || scope["name"] != "DevOps" {
+		t.Fatalf("workspace_scope = %v", info["workspace_scope"])
+	}
+	_, overview := call(t, session, "workspace_overview", map[string]any{})
+	if overview["overview"] == nil {
+		t.Fatalf("workspace_overview without workspace_id = %v", overview)
+	}
+	result, _ := call(t, session, "create_item", map[string]any{"board_id": "200", "name": "x"})
+	if !result.IsError || !strings.Contains(errorText(result), "outside the configured scope") {
+		t.Fatalf("foreign board = %s", errorText(result))
+	}
+	if port.MutationCount() != 0 {
+		t.Fatalf("mutations = %v", port.Mutations)
+	}
+}
+
+func TestUnscopedInstructionsAskToChooseWorkspace(t *testing.T) {
+	session, _, _ := connect(t, false)
+	if !strings.Contains(session.InitializeResult().Instructions, "list_workspaces") {
+		t.Fatalf("instructions = %q", session.InitializeResult().Instructions)
+	}
+}

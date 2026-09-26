@@ -23,6 +23,8 @@ type FakePort struct {
 	nextID    int
 	PageSize  int
 	FailOn    map[string]error
+	// BoardWorkspace overrides a board's workspace (default "7").
+	BoardWorkspace map[string]string
 }
 
 // NewFakePort returns a fake with board "100" (group "todo") and item "500".
@@ -35,10 +37,11 @@ func NewFakePort() *FakePort {
 			{ID: "name", Title: "Name", Type: "name"}, status,
 			{ID: "due", Title: "Due date", Type: "date"}, {ID: "owner", Title: "Owner", Type: "people"}, {ID: "est", Title: "Estimate", Type: "numbers"},
 		}},
-		Groups: map[string][]domain.Group{"100": {{ID: "todo", Title: "To Do"}}},
-		Items:  map[string]domain.Item{},
-		nextID: 1000,
-		FailOn: map[string]error{},
+		Groups:         map[string][]domain.Group{"100": {{ID: "todo", Title: "To Do"}}},
+		Items:          map[string]domain.Item{},
+		nextID:         1000,
+		FailOn:         map[string]error{},
+		BoardWorkspace: map[string]string{},
 	}
 	f.Items["500"] = domain.Item{ID: "500", Name: "Seed", BoardID: "100", Group: &domain.Group{ID: "todo", Title: "To Do"}}
 	f.Order = []string{"500"}
@@ -94,7 +97,13 @@ func (f *FakePort) GetBoard(_ context.Context, id string) (*domain.Board, error)
 	if _, ok := f.Columns[id]; !ok {
 		return nil, &monday.NotFoundError{Resource: "board", ID: id}
 	}
-	return &domain.Board{ID: id, Name: "Ops", WorkspaceID: "7"}, nil
+	f.mu.Lock()
+	workspace, ok := f.BoardWorkspace[id]
+	f.mu.Unlock()
+	if !ok {
+		workspace = "7"
+	}
+	return &domain.Board{ID: id, Name: "Ops", WorkspaceID: workspace}, nil
 }
 func (f *FakePort) GetBoardSchema(ctx context.Context, id string) (*monday.BoardSchema, error) {
 	board, err := f.GetBoard(ctx, id)
