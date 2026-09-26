@@ -22,6 +22,12 @@ CI and security workflows run on pull requests targeting `main` or an intermedia
 - Never commit `.env`, API tokens, or real monday.com data.
 - Keep MCP stdout protocol-clean; write diagnostics to stderr.
 - Use contexts, bounded I/O, typed errors, and explicit validation.
+- Keep statement coverage of `internal/application` and `internal/monday` at
+  80% or more. `make coverage` (part of `make validate`) and the CI
+  "Coverage gate" step run `scripts/coverage_gate.sh` and fail below the
+  threshold. New adapter methods need a contract test in
+  `internal/monday/adapter_contract_test.go`; new use cases need a case in
+  `internal/application/usecases_test.go`.
 - Do not create `CLAUDE.md`; `AGENTS.md` is canonical.
 
 ## Commit style
