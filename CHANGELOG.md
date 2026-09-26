@@ -8,6 +8,12 @@ All notable changes are documented here. The format follows
 
 ### Added
 
+- **Repository automation (#26):** `pr-checks.yaml` (Conventional Commits PR
+  title, branch name, yamllint, shellcheck, markdownlint, relative doc links),
+  `labels-sync.yaml` (labels declared in `.github/labels.yaml`, never deleted)
+  and `docs-wiki-sync.yaml` (the Wiki is rebuilt from `docs/`). `make lint`
+  and `make wiki-preview` run the same steps locally; `make validate` now
+  includes `lint`.
 - **Access levels (#23):** `MCP_ACCESS_LEVEL=read|write|full` (default
   `write`) decides which tools are registered. `full` adds seven permanent
   deletes (`delete_item`, `delete_group`, `delete_board`, `delete_column`,
@@ -36,6 +42,9 @@ All notable changes are documented here. The format follows
 
 ### Changed
 
+- **Dependencies (#26):** Go builder image 1.25.0 -> 1.27.1 (the `go.mod`
+  minimum stays 1.25), `actions/checkout` v4 -> v7, `gitleaks-action` v2 -> v3.
+  Supersedes Dependabot PRs #9, #10 and #11.
 - `MCP_READ_ONLY` is a deprecated alias of `MCP_ACCESS_LEVEL=read`.
 
 ## [0.2.0] — Operational MVP

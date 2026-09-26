@@ -1,0 +1,76 @@
+---
+# PR Checks
+# Pull-request hygiene that the Go pipeline (ci.yaml) does not cover:
+# Conventional Commits title, YAML lint, shell lint, branch-name convention
+# and Markdown/doc-link validation. Mirrors mcp-github-projects.
+name: PR Checks
+run-name: 'PR #${{ github.event.pull_request.number }} — Checks'
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: PR title (Conventional Commits)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Lint PR title
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            chore
+            refactor
+            test
+            ci
+            perf
+            build
+            revert
+          requireScope: false
+
+  branch-name:
+    name: Branch name
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Validate branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: bash scripts/check_branch_name.sh "$BRANCH"
+
+  lint:
+    name: YAML, shell and Markdown lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: YAML lint
+        run: pipx run yamllint==1.37.1 -c .yamllint.yaml .
+      - name: Shell lint
+        run: git ls-files '*.sh' | xargs --no-run-if-empty shellcheck
+      - name: Markdown lint
+        run: npx --yes markdownlint-cli2@0.18.1
+      - name: Relative doc links
+        run: python3 scripts/check_doc_links.py

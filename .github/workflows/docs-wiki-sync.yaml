@@ -1,0 +1,40 @@
+---
+# Docs — Wiki Sync
+# On every push to main that touches docs/, rebuild the Wiki from docs/ with
+# scripts/wiki_sync.sh. The repository docs are the source of truth; the Wiki
+# is a read-only mirror for browsing.
+name: Docs — Wiki Sync
+run-name: 'Wiki Sync — ${{ github.ref_name }}'
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'scripts/wiki_sync.sh']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-wiki-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync docs/ to Wiki
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write  # push to the <repo>.wiki.git repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Validate relative doc links
+        run: python3 scripts/check_doc_links.py
+      - name: Mirror docs/ into the Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: bash scripts/wiki_sync.sh
