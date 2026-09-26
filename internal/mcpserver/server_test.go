@@ -297,3 +297,21 @@ func TestReadAndWriteLevelsHideDeletes(t *testing.T) {
 		}
 	}
 }
+
+func TestServerInfoReportsProfile(t *testing.T) {
+	port := applicationtest.NewFakePort()
+	svc := application.NewService(port, application.Options{})
+	server, _ := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", Profile: "devops"})
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(context.Background(), serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(context.Background(), clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	if _, info := call(t, session, "server_info", nil); info["profile"] != "devops" {
+		t.Fatalf("profile = %v", info["profile"])
+	}
+}

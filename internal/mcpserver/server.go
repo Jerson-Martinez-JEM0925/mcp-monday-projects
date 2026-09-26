@@ -24,6 +24,7 @@ type ServerInfoOutput struct {
 	Runtime      string         `json:"runtime"`
 	APIVersion   string         `json:"api_version"`
 	AccessLevel  string         `json:"access_level"`
+	Profile      string         `json:"profile,omitempty"`
 	ToolCount    int            `json:"tool_count"`
 	HiddenTools  int            `json:"hidden_write_tools"`
 	WritePolicy  map[string]any `json:"write_policy"`
@@ -48,6 +49,8 @@ func ServerInfo(_ context.Context, _ *mcp.CallToolRequest, _ ServerInfoInput) (*
 // Options configure a server built around an existing application service.
 type Options struct {
 	APIVersion string
+	// Profile is the active MCP_PROFILE name, reported by server_info.
+	Profile string
 	// AccessLevel is read, write, or full; empty derives it from ReadOnly.
 	AccessLevel    string
 	ReadOnly       bool
@@ -100,7 +103,7 @@ func New(cfg config.Config) *mcp.Server {
 		Guard: guard, ReportMaxItems: cfg.ReportMaxItems, WorkspaceScope: cfg.WorkspaceID,
 		AllowDelete: cfg.AccessLevel == config.AccessFull,
 	})
-	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, AccessLevel: cfg.AccessLevel, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
+	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, Profile: cfg.Profile, AccessLevel: cfg.AccessLevel, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
 	return server
 }
 
@@ -113,10 +116,10 @@ func NewWithService(svc *application.Service, options Options) (*mcp.Server, []T
 	r := &registry{server: server, svc: svc, readOnly: level == config.AccessRead, full: level == config.AccessFull}
 
 	add(r, ToolSpec{Name: "server_info", Category: CatDiagnostics, Title: "Server info", ReadOnly: true,
-		Description: "Return safe server metadata: version, runtime, API version, tool count, the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
+		Description: "Return safe server metadata: version, runtime, API version, tool count, the active profile (MCP_PROFILE), the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
 		func(ctx context.Context, _ ServerInfoInput) (ServerInfoOutput, error) {
 			out := ServerInfoOutput{
-				Name: "mcp-monday-projects", Version: Version, Runtime: runtime.Version(), APIVersion: options.APIVersion, AccessLevel: level,
+				Name: "mcp-monday-projects", Version: Version, Runtime: runtime.Version(), APIVersion: options.APIVersion, AccessLevel: level, Profile: options.Profile,
 				ToolCount: len(r.specs), HiddenTools: len(r.skipped), WritePolicy: svc.Guard().Describe(), ReportBudget: options.ReportMaxItems,
 			}
 			if scope := svc.WorkspaceScope(); scope != "" {

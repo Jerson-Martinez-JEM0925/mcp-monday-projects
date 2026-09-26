@@ -54,6 +54,10 @@ Add `-e MCP_ACCESS_LEVEL=read` (or `full`, a workspace scope, or an allowlist, s
 Clients that honor MCP tool annotations can require confirmation for tools
 with `destructiveHint: true`.
 
+To pin a target per client, add `"-e", "MCP_PROFILE=devops", "-v",
+"/path/to/mcp-monday-projects/profiles:/profiles:ro"` to the `args`; see
+[profiles](CAPABILITIES.md#profiles).
+
 ## Verify the connection
 
 ```bash

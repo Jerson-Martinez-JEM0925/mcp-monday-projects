@@ -48,6 +48,31 @@ Permanent deletes (`internal/application/deletes.go`):
 `MCP_READ_ONLY=true` remains a deprecated alias of `read`; combining it with
 `MCP_ACCESS_LEVEL=write|full` fails at startup.
 
+## Profiles
+
+A profile pins one monday target — account token, workspace, access level and
+allowlists — in `profiles/<name>.env`, selected with `MCP_PROFILE=<name>`. It
+mirrors `GH_PROJECT_PROFILE` in mcp-github-projects.
+
+```bash
+cp profiles/example.env profiles/devops.env   # git-ignored
+docker run --rm -i --env-file .env \
+  -e MCP_PROFILE=devops \
+  -v "$PWD/profiles:/profiles:ro" \
+  mcp-monday-projects:local
+```
+
+| Rule | Behaviour |
+|---|---|
+| Precedence | Keys set in the profile win over the environment, so a stray variable cannot widen a pinned target; keys the profile omits fall back to the environment and then to defaults. |
+| Tokens | Never in the file: `MONDAY_API_TOKEN` is rejected. `MONDAY_API_TOKEN_ENV=MONDAY_TOKEN_DEVOPS` names the variable that holds this account's token; without it `MONDAY_API_TOKEN` is used. |
+| Allowed keys | `MONDAY_API_TOKEN_ENV`, `MONDAY_WORKSPACE_ID`, `MCP_ACCESS_LEVEL`, the two write allowlists, `MCP_REPORT_MAX_ITEMS`, `MONDAY_API_VERSION`, `MONDAY_API_URL`, and the runtime limits. Any other key fails at startup. |
+| Location | `MCP_PROFILES_DIR` (default `/profiles` in the image, `profiles` otherwise). Names are lowercase `a-z 0-9 - _`. |
+| Visibility | `server_info.profile` reports the active profile; the token is never returned. |
+
+Errors name the profile and the offending line, and stop the server before
+it accepts any request.
+
 ## Workspace scope
 
 `MONDAY_WORKSPACE_ID=<id>` confines the server to one workspace, for **reads
@@ -120,4 +145,5 @@ When any allowlist is set:
 | Single-team workspace | `MONDAY_WORKSPACE_ID=<team workspace>` |
 | Team sandbox | `MONDAY_WORKSPACE_ID=<sandbox workspace>`, `MONDAY_WRITE_WORKSPACE_ALLOWLIST=<sandbox workspace>` and `MONDAY_WRITE_BOARD_ALLOWLIST=<sandbox boards>` |
 | Trusted automation | `MCP_ACCESS_LEVEL=write`, dedicated monday user with minimal board access |
+| Several accounts or teams | one profile per target, e.g. `MCP_PROFILE=devops` (read) and `MCP_PROFILE=devops-admin` (full) |
 | Maintenance / cleanup | `MCP_ACCESS_LEVEL=full` with `MONDAY_WORKSPACE_ID` and a board allowlist |
