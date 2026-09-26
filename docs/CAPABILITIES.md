@@ -50,44 +50,28 @@ Permanent deletes (`internal/application/deletes.go`):
 
 ## Profiles
 
-A profile pins one monday target — account token reference, workspace, access
-level, allowlists, report budget and API version — so several accounts or teams
-can be driven from one image by name. Profiles live in one optional YAML file
-and are selected with `MCP_PROFILE=<name>`. This mirrors `GH_PROJECT_PROFILE` in
-mcp-github-projects (which uses per-target files); here they are collected in a
-single YAML file so one mount serves every target.
+A profile pins one monday target — account token, workspace, access level and
+allowlists — in `profiles/<name>.env`, selected with `MCP_PROFILE=<name>`. It
+mirrors `GH_PROJECT_PROFILE` in mcp-github-projects.
 
 ```bash
-cp profiles.example.yaml profiles.yaml          # profiles.yaml is git-ignored
+cp profiles/example.env profiles/devops.env   # git-ignored
 docker run --rm -i --env-file .env \
-  -e MONDAY_TOKEN_DEVOPS=... \
   -e MCP_PROFILE=devops \
-  -e MCP_PROFILES_FILE=/profiles.yaml \
-  -v "$PWD/profiles.yaml:/profiles.yaml:ro" \
+  -v "$PWD/profiles:/profiles:ro" \
   mcp-monday-projects:local
-```
-
-```yaml
-# profiles.yaml
-profiles:
-  devops:
-    token_env: MONDAY_TOKEN_DEVOPS   # env var holding the token — never the token
-    workspace_id: 14216815
-    access_level: read
-    report_max_items: 250
-    board_allowlist: [18432840016]
-    workspace_allowlist: [14216815]
-    api_version: "2026-07"
 ```
 
 | Rule | Behaviour |
 |---|---|
-| Precedence | **explicit environment variable > profile value > built-in default.** A profile pins a field over the default, but an explicitly exported variable of the same name still wins, so an operator can override one field without editing the file. |
-| Tokens | Never in the file. `token_env` names the environment variable that holds this account's token (e.g. `MONDAY_TOKEN_DEVOPS`); `MONDAY_API_TOKEN` is used when a profile omits `token_env`. |
-| Fields | `token_env`, `workspace_id`, `access_level`, `board_allowlist`, `workspace_allowlist`, `report_max_items`, `api_version`, `api_url`. Any other field fails at startup (`field <x> not found`). |
-| Location | `MCP_PROFILES_FILE` (default `profiles.yaml` next to the working dir). Extension is `.yaml`. Names are lowercase `a-z 0-9 - _`. |
-| Errors | An unknown profile name, an unknown field, an invalid value, an empty/mis-named `token_env`, or a missing file is a **startup error that names the profile**, and the server refuses to start. |
-| Visibility | `server_info.profile` reports the active profile name; the token is never returned. |
+| Precedence | Keys set in the profile win over the environment, so a stray variable cannot widen a pinned target; keys the profile omits fall back to the environment and then to defaults. |
+| Tokens | Never in the file: `MONDAY_API_TOKEN` is rejected. `MONDAY_API_TOKEN_ENV=MONDAY_TOKEN_DEVOPS` names the variable that holds this account's token; without it `MONDAY_API_TOKEN` is used. |
+| Allowed keys | `MONDAY_API_TOKEN_ENV`, `MONDAY_WORKSPACE_ID`, `MCP_ACCESS_LEVEL`, the two write allowlists, `MCP_REPORT_MAX_ITEMS`, `MONDAY_API_VERSION`, `MONDAY_API_URL`, and the runtime limits. Any other key fails at startup. |
+| Location | `MCP_PROFILES_DIR` (default `/profiles` in the image, `profiles` otherwise). Names are lowercase `a-z 0-9 - _`. |
+| Visibility | `server_info.profile` reports the active profile; the token is never returned. |
+
+Errors name the profile and the offending line, and stop the server before
+it accepts any request.
 
 ## Workspace scope
 

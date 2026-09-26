@@ -26,9 +26,9 @@ go.work.sum
 
 # env file
 .env
-# Local profiles file (see profiles.example.yaml); the example is committed.
-profiles.yaml
-!profiles.example.yaml
+# Local profiles (see profiles/example.env)
+profiles/*.env
+!profiles/example.env
 
 # Editor/IDE
 # .idea/
