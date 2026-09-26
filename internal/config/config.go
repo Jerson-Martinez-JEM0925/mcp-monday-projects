@@ -21,7 +21,11 @@ type Config struct {
 	HTTPTimeout      time.Duration
 	MaxResponseBytes int64
 	MaxRetries       int
-	// ReadOnly disables every mutation tool (they are not even registered).
+	// AccessLevel is read, write (default), or full. It decides which tools
+	// are registered: read hides every mutation, write exposes create/update/
+	// archive, and full also exposes permanent deletes.
+	AccessLevel string
+	// ReadOnly is true at AccessLevel=read (mutation tools are not registered).
 	ReadOnly bool
 	// WriteBoardAllowlist restricts mutations to these board IDs when set.
 	WriteBoardAllowlist []string
@@ -59,9 +63,9 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("MCP_MAX_RETRIES must be between 0 and 5")
 	}
 
-	readOnly, err := strconv.ParseBool(valueOrDefault("MCP_READ_ONLY", "false"))
+	level, err := parseAccessLevel()
 	if err != nil {
-		return Config{}, fmt.Errorf("MCP_READ_ONLY must be true or false")
+		return Config{}, err
 	}
 	boards, err := parseIDList("MONDAY_WRITE_BOARD_ALLOWLIST")
 	if err != nil {
@@ -90,12 +94,43 @@ func Load() (Config, error) {
 		HTTPTimeout:             timeout,
 		MaxResponseBytes:        maxResponseBytes,
 		MaxRetries:              int(retries),
-		ReadOnly:                readOnly,
+		AccessLevel:             level,
+		ReadOnly:                level == AccessRead,
 		WriteBoardAllowlist:     boards,
 		WriteWorkspaceAllowlist: workspaces,
 		WorkspaceID:             workspaceID,
 		ReportMaxItems:          int(reportMax),
 	}, nil
+}
+
+// Access levels accepted by MCP_ACCESS_LEVEL.
+const (
+	AccessRead  = "read"
+	AccessWrite = "write"
+	AccessFull  = "full"
+)
+
+// parseAccessLevel reads MCP_ACCESS_LEVEL, keeping MCP_READ_ONLY=true as a
+// backward-compatible alias for read. Contradictory settings are rejected.
+func parseAccessLevel() (string, error) {
+	readOnly, err := strconv.ParseBool(valueOrDefault("MCP_READ_ONLY", "false"))
+	if err != nil {
+		return "", fmt.Errorf("MCP_READ_ONLY must be true or false")
+	}
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("MCP_ACCESS_LEVEL")))
+	switch raw {
+	case "":
+		if readOnly {
+			return AccessRead, nil
+		}
+		return AccessWrite, nil
+	case AccessRead, AccessWrite, AccessFull:
+		if readOnly && raw != AccessRead {
+			return "", fmt.Errorf("MCP_READ_ONLY=true contradicts MCP_ACCESS_LEVEL=%s; remove MCP_READ_ONLY (deprecated) or set MCP_ACCESS_LEVEL=read", raw)
+		}
+		return raw, nil
+	}
+	return "", fmt.Errorf("MCP_ACCESS_LEVEL must be read, write, or full")
 }
 
 func parseIDList(name string) ([]string, error) {

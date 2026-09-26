@@ -10,7 +10,7 @@ import (
 )
 
 // ErrReadOnly is returned by every mutation when the server runs read-only.
-var ErrReadOnly = errors.New("server is running in read-only mode (MCP_READ_ONLY=true); mutations are disabled")
+var ErrReadOnly = errors.New("server is running at MCP_ACCESS_LEVEL=read; mutations are disabled")
 
 // GuardError explains why a mutation target is outside the allowlist.
 type GuardError struct {
@@ -157,6 +157,7 @@ type Service struct {
 	now            func() time.Time
 	reportMaxItems int
 	scope          string
+	allowDelete    bool
 }
 
 // Options configures a Service.
@@ -166,6 +167,8 @@ type Options struct {
 	ReportMaxItems int
 	// WorkspaceScope confines every call to one workspace (MONDAY_WORKSPACE_ID).
 	WorkspaceScope string
+	// AllowDelete enables permanent deletes (MCP_ACCESS_LEVEL=full).
+	AllowDelete bool
 }
 
 // NewService builds the application service.
@@ -182,7 +185,7 @@ func NewService(port Port, options Options) *Service {
 	if options.WorkspaceScope != "" {
 		port = NewScopedPort(port, options.WorkspaceScope)
 	}
-	return &Service{port: port, guard: options.Guard, now: options.Now, reportMaxItems: options.ReportMaxItems, scope: options.WorkspaceScope}
+	return &Service{port: port, guard: options.Guard, now: options.Now, reportMaxItems: options.ReportMaxItems, scope: options.WorkspaceScope, allowDelete: options.AllowDelete}
 }
 
 // WorkspaceScope returns the configured workspace scope, or "" when unscoped.

@@ -37,7 +37,9 @@ Do not put GraphQL queries directly in MCP tool handlers.
 - Never commit `.env`, tokens, personal data, or production responses.
 - Logs go to stderr; MCP stdout is reserved for the protocol.
 - All external calls use context, timeouts, bounded responses, and typed errors.
-- Destructive operations must use archive semantics when monday supports them.
+- Archive is the default destructive verb. Permanent deletes exist only at
+  `MCP_ACCESS_LEVEL=full`, require `confirm: true`, and must pass the same
+  workspace scope and write allowlists as every other mutation.
 
 ## Validation
 

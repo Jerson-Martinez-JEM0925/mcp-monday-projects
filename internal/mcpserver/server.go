@@ -23,6 +23,7 @@ type ServerInfoOutput struct {
 	Version      string         `json:"version"`
 	Runtime      string         `json:"runtime"`
 	APIVersion   string         `json:"api_version"`
+	AccessLevel  string         `json:"access_level"`
 	ToolCount    int            `json:"tool_count"`
 	HiddenTools  int            `json:"hidden_write_tools"`
 	WritePolicy  map[string]any `json:"write_policy"`
@@ -46,23 +47,48 @@ func ServerInfo(_ context.Context, _ *mcp.CallToolRequest, _ ServerInfoInput) (*
 
 // Options configure a server built around an existing application service.
 type Options struct {
-	APIVersion     string
+	APIVersion string
+	// AccessLevel is read, write, or full; empty derives it from ReadOnly.
+	AccessLevel    string
 	ReadOnly       bool
 	ReportMaxItems int
+}
+
+// level resolves the effective access level.
+func (o Options) level() string {
+	switch {
+	case o.AccessLevel != "":
+		return o.AccessLevel
+	case o.ReadOnly:
+		return config.AccessRead
+	}
+	return config.AccessWrite
 }
 
 const baseInstructions = "Tools for monday.com workspaces, boards, items, people, updates, and reports. " +
 	"Read tools are safe. Write tools validate column values against the board schema before calling monday, " +
 	"bulk tools default to dry_run=true, and destructive operations archive instead of delete."
 
-// instructions tells the client how to pick a workspace.
-func instructions(scope string) string {
+// accessNotes explains the effective access level to the client.
+var accessNotes = map[string]string{
+	config.AccessRead:  " Access level: read (MCP_ACCESS_LEVEL=read): only read tools are available.",
+	config.AccessWrite: " Access level: write (MCP_ACCESS_LEVEL=write): create, update, and archive are available; permanent deletes are not.",
+	config.AccessFull: " Access level: full (MCP_ACCESS_LEVEL=full): delete_* tools PERMANENTLY delete and require confirm=true; " +
+		"prefer archive_* unless the user explicitly asks for a permanent delete.",
+}
+
+// instructions tells the client the access level and how to pick a workspace.
+func instructions(level, scope string) string {
+	return baseInstructions + accessNotes[level] + workspaceNote(scope)
+}
+
+func workspaceNote(scope string) string {
 	if scope != "" {
-		return baseInstructions + " This server is scoped to workspace " + scope +
+		return " This server is scoped to workspace " + scope +
 			" (MONDAY_WORKSPACE_ID): omit workspace_id to use it; every other workspace, and any board or item outside it, is refused. " +
 			"Call server_info to see the workspace name."
 	}
-	return baseInstructions + " No workspace scope is configured: resolve the workspace from the user's request, " +
+	return " No workspace scope is configured: resolve the workspace from the user's request, " +
 		"or call list_workspaces and ask the user which workspace to act on before any write."
 }
 
@@ -70,23 +96,27 @@ func instructions(scope string) string {
 func New(cfg config.Config) *mcp.Server {
 	client := monday.NewClient(cfg)
 	guard := application.NewWriteGuard(cfg.ReadOnly, cfg.WriteBoardAllowlist, cfg.WriteWorkspaceAllowlist)
-	svc := application.NewService(client, application.Options{Guard: guard, ReportMaxItems: cfg.ReportMaxItems, WorkspaceScope: cfg.WorkspaceID})
-	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
+	svc := application.NewService(client, application.Options{
+		Guard: guard, ReportMaxItems: cfg.ReportMaxItems, WorkspaceScope: cfg.WorkspaceID,
+		AllowDelete: cfg.AccessLevel == config.AccessFull,
+	})
+	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, AccessLevel: cfg.AccessLevel, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
 	return server
 }
 
 // NewWithService builds the server around a service and returns its catalog.
 func NewWithService(svc *application.Service, options Options) (*mcp.Server, []ToolSpec) {
 	server := mcp.NewServer(&mcp.Implementation{Name: "mcp-monday-projects", Title: "monday.com MCP", Version: Version}, &mcp.ServerOptions{
-		Instructions: instructions(svc.WorkspaceScope()),
+		Instructions: instructions(options.level(), svc.WorkspaceScope()),
 	})
-	r := &registry{server: server, svc: svc, readOnly: options.ReadOnly}
+	level := options.level()
+	r := &registry{server: server, svc: svc, readOnly: level == config.AccessRead, full: level == config.AccessFull}
 
 	add(r, ToolSpec{Name: "server_info", Category: CatDiagnostics, Title: "Server info", ReadOnly: true,
-		Description: "Return safe server metadata: version, runtime, API version, tool count, the effective write policy (read-only mode and allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
+		Description: "Return safe server metadata: version, runtime, API version, tool count, the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
 		func(ctx context.Context, _ ServerInfoInput) (ServerInfoOutput, error) {
 			out := ServerInfoOutput{
-				Name: "mcp-monday-projects", Version: Version, Runtime: runtime.Version(), APIVersion: options.APIVersion,
+				Name: "mcp-monday-projects", Version: Version, Runtime: runtime.Version(), APIVersion: options.APIVersion, AccessLevel: level,
 				ToolCount: len(r.specs), HiddenTools: len(r.skipped), WritePolicy: svc.Guard().Describe(), ReportBudget: options.ReportMaxItems,
 			}
 			if scope := svc.WorkspaceScope(); scope != "" {
@@ -137,6 +167,7 @@ func NewWithService(svc *application.Service, options Options) (*mcp.Server, []T
 	registerItemTools(r)
 	registerCollaborationTools(r)
 	registerReportTools(r)
+	registerDeleteTools(r)
 	registerPrompts(server)
 	return server, r.Catalog()
 }

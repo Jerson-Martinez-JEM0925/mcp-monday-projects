@@ -8,11 +8,23 @@ All notable changes are documented here. The format follows
 
 ### Added
 
+- **Access levels (#23):** `MCP_ACCESS_LEVEL=read|write|full` (default
+  `write`) decides which tools are registered. `full` adds seven permanent
+  deletes (`delete_item`, `delete_group`, `delete_board`, `delete_column`,
+  `delete_update`, `delete_folder`, `delete_workspace`) that require
+  `confirm: true` and obey the workspace scope and allowlists.
+  `server_info.access_level` reports the level; the smoke suite checks all
+  three levels and gains an opt-in `--allow-delete` phase.
 - **Workspace scope (#20):** `MONDAY_WORKSPACE_ID` confines every read and
   write to one workspace. An omitted `workspace_id` defaults to it, foreign
   boards and items are refused with a typed `ScopeError`, and
   `server_info.workspace_scope` reports the ID and name. Unscoped servers now
   instruct the client to pick a workspace (or ask the user) before writing.
+- **Structured `.env.example`** with sections and read / write / full presets.
+
+### Changed
+
+- `MCP_READ_ONLY` is a deprecated alias of `MCP_ACCESS_LEVEL=read`.
 
 ## [0.2.0] — Operational MVP
 

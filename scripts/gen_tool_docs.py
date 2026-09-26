@@ -34,11 +34,15 @@ TITLES = {
     "collaboration": "Updates and notifications",
     "tags": "Tags",
     "reports": "Reports",
+    "deletes": "Permanent deletes (MCP_ACCESS_LEVEL=full)",
 }
 
 
 def render() -> str:
-    response = call("list_tool_catalog", {}) or {}
+    # Full access and no scope/allowlists so the catalog lists every tool.
+    full = ["MCP_ACCESS_LEVEL=full", "MCP_READ_ONLY=", "MONDAY_WORKSPACE_ID=",
+            "MONDAY_WRITE_BOARD_ALLOWLIST=", "MONDAY_WRITE_WORKSPACE_ALLOWLIST="]
+    response = call("list_tool_catalog", {}, full) or {}
     catalog = (response.get("result") or {}).get("structuredContent") or {}
     tools = catalog.get("tools") or []
     if not tools:
@@ -51,6 +55,8 @@ def render() -> str:
             lines += ["", f"### {TITLES.get(current, current)}", "", "| Tool | Mode | Capability | Description |", "|---|---|---|---|"]
         if tool["read_only"]:
             mode = "read"
+        elif tool.get("permanent"):
+            mode = "full · permanent delete"
         elif tool["destructive"]:
             mode = "write · archive"
         else:

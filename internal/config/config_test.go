@@ -94,3 +94,33 @@ func TestLoadWorkspaceScope(t *testing.T) {
 		t.Fatal("Load() accepted a list for MONDAY_WORKSPACE_ID")
 	}
 }
+
+func TestLoadAccessLevel(t *testing.T) {
+	cases := []struct {
+		level, readOnly, want string
+		readOnlyWant          bool
+	}{
+		{"", "", AccessWrite, false},
+		{"read", "", AccessRead, true},
+		{"WRITE", "", AccessWrite, false},
+		{"full", "", AccessFull, false},
+		{"", "true", AccessRead, true},
+		{"read", "true", AccessRead, true},
+	}
+	for _, tc := range cases {
+		t.Setenv("MONDAY_API_TOKEN", "test-token")
+		t.Setenv("MCP_ACCESS_LEVEL", tc.level)
+		t.Setenv("MCP_READ_ONLY", tc.readOnly)
+		cfg, err := Load()
+		if err != nil || cfg.AccessLevel != tc.want || cfg.ReadOnly != tc.readOnlyWant {
+			t.Fatalf("level=%q read_only=%q: got %q/%v, err %v", tc.level, tc.readOnly, cfg.AccessLevel, cfg.ReadOnly, err)
+		}
+	}
+	for _, bad := range [][2]string{{"admin", ""}, {"full", "true"}, {"write", "true"}} {
+		t.Setenv("MCP_ACCESS_LEVEL", bad[0])
+		t.Setenv("MCP_READ_ONLY", bad[1])
+		if _, err := Load(); err == nil {
+			t.Fatalf("Load() accepted MCP_ACCESS_LEVEL=%s MCP_READ_ONLY=%s", bad[0], bad[1])
+		}
+	}
+}

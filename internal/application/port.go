@@ -62,6 +62,15 @@ type Port interface {
 	CreateNotification(ctx context.Context, userID, targetID, targetType, text string) error
 	ListTags(ctx context.Context, ids []string) ([]domain.Tag, error)
 	CreateOrGetTag(ctx context.Context, boardID, name string) (*domain.Tag, error)
+
+	// Permanent deletes (MCP_ACCESS_LEVEL=full only).
+	DeleteItem(ctx context.Context, itemID string) error
+	DeleteGroup(ctx context.Context, boardID, groupID string) error
+	DeleteBoard(ctx context.Context, boardID string) error
+	DeleteColumn(ctx context.Context, boardID, columnID string) error
+	DeleteUpdate(ctx context.Context, updateID string) error
+	DeleteFolder(ctx context.Context, folderID string) error
+	DeleteWorkspace(ctx context.Context, workspaceID string) error
 }
 
 var _ Port = (*monday.Client)(nil)

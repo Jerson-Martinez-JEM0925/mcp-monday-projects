@@ -20,6 +20,34 @@ write policy below to narrow what an MCP client can change.
 | `tags.read` / `.write` | tags | `tags:read` / `boards:write` |
 | `reports.read` | every report | `boards:read` |
 
+## Access levels
+
+`MCP_ACCESS_LEVEL` decides which tools are **registered**. A tool hidden at a
+level is invisible to the client; `server_info.access_level` and
+`server_info.hidden_write_tools` report the effective surface.
+
+| Level | Tools | Use it for |
+|---|---|---|
+| `read` | 39 read tools: schema, search, reports, diagnostics | Analysts, dashboards, audits |
+| `write` (default) | + 33 write tools: create, update, move, archive, bulk | Day-to-day work; archive is restorable for 30 days |
+| `full` | + 7 permanent deletes (`delete_*`) | Cleanup and maintenance by a trusted operator |
+
+Permanent deletes (`internal/application/deletes.go`):
+
+- Exist only at `full`, carry `destructiveHint: true`, and are listed in
+  their own `deletes` category of the catalog.
+- Require `confirm: true`; without it the call is refused locally and the
+  error names the recoverable `archive_*` alternative when one exists.
+- Pass the same guards as every other mutation: `MONDAY_WORKSPACE_ID`, the
+  board/workspace allowlists, and `ErrReadOnly`.
+- `delete_update` needs the owning `item_id` and checks that the update
+  belongs to it; `delete_folder` checks that the folder is in the workspace;
+  `delete_workspace` is refused whenever a scope or allowlist is set; the
+  `name` column cannot be deleted.
+
+`MCP_READ_ONLY=true` remains a deprecated alias of `read`; combining it with
+`MCP_ACCESS_LEVEL=write|full` fails at startup.
+
 ## Workspace scope
 
 `MONDAY_WORKSPACE_ID=<id>` confines the server to one workspace, for **reads
@@ -48,7 +76,7 @@ Without a scope the server stays account-wide, and its instructions tell the
 client to resolve the workspace from the request, or to call
 `list_workspaces` and ask the user before writing.
 
-The scope composes with the write policy below: `MCP_READ_ONLY` and the
+The scope composes with the access level and the write policy below: they
 allowlists still apply inside the scoped workspace.
 
 ## Write policy
@@ -58,7 +86,7 @@ before any GraphQL mutation is built.
 
 | Variable | Effect |
 |---|---|
-| `MCP_READ_ONLY=true` | Write tools are **not registered** — clients cannot even see them. `server_info.hidden_write_tools` reports how many were hidden. |
+| `MCP_ACCESS_LEVEL=read` | Write tools are **not registered** — clients cannot even see them. `server_info.hidden_write_tools` reports how many were hidden. |
 | `MONDAY_WRITE_BOARD_ALLOWLIST=1,2` | Mutations are allowed only on these boards. Item-level writes resolve the item's board first. |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST=7` | Board/folder creation, duplication, and template provisioning are allowed only in these workspaces. |
 
@@ -74,8 +102,11 @@ When any allowlist is set:
 
 ## Safety properties
 
-- No tool deletes anything. `archive_*` tools archive (restorable in monday
-  for 30 days); `archive_board` and `archive_group` require `confirm: true`.
+- Below `full`, no tool deletes anything. `archive_*` tools archive
+  (restorable in monday for 30 days); `archive_board` and `archive_group`
+  require `confirm: true`.
+- At `full`, every `delete_*` tool requires `confirm: true` and is guarded
+  like any other mutation.
 - Bulk tools are capped at 50 rows and default to `dry_run: true`.
 - `create_labels_if_missing` is always `false`.
 - Every tool advertises MCP annotations (`readOnlyHint`, `destructiveHint`)
@@ -85,7 +116,8 @@ When any allowlist is set:
 
 | Profile | Settings |
 |---|---|
-| Analyst / reporting | `MCP_READ_ONLY=true` |
+| Analyst / reporting | `MCP_ACCESS_LEVEL=read` |
 | Single-team workspace | `MONDAY_WORKSPACE_ID=<team workspace>` |
 | Team sandbox | `MONDAY_WORKSPACE_ID=<sandbox workspace>`, `MONDAY_WRITE_WORKSPACE_ALLOWLIST=<sandbox workspace>` and `MONDAY_WRITE_BOARD_ALLOWLIST=<sandbox boards>` |
-| Trusted automation | no allowlist, dedicated monday user with minimal board access |
+| Trusted automation | `MCP_ACCESS_LEVEL=write`, dedicated monday user with minimal board access |
+| Maintenance / cleanup | `MCP_ACCESS_LEVEL=full` with `MONDAY_WORKSPACE_ID` and a board allowlist |

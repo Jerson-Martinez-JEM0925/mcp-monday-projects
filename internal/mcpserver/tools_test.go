@@ -2,6 +2,8 @@ package mcpserver_test
 
 import (
 	"testing"
+
+	"github.com/jersonmartinez/mcp-monday-projects/internal/config"
 )
 
 // TestEveryToolIsCallable invokes every registered tool with valid arguments
@@ -94,8 +96,16 @@ func TestEveryToolIsCallable(t *testing.T) {
 		"export_board_markdown": {"board_id": "100"},
 		"export_board_csv":      {"board_id": "100"},
 		"workspace_overview":    {"workspace_id": "7"},
+
+		"delete_board":     {"board_id": "100", "confirm": yes},
+		"delete_column":    {"board_id": "100", "column_id": "est", "confirm": yes},
+		"delete_folder":    {"workspace_id": "7", "folder_id": "301", "confirm": yes},
+		"delete_group":     {"board_id": "100", "group_id": "todo", "confirm": yes},
+		"delete_item":      {"item_id": "500", "confirm": yes},
+		"delete_update":    {"item_id": "500", "update_id": "77", "confirm": yes},
+		"delete_workspace": {"workspace_id": "8", "confirm": yes},
 	}
-	session, catalog, _ := connect(t, false)
+	session, catalog, _ := connectLevel(t, config.AccessFull)
 	for _, spec := range catalog {
 		args, ok := cases[spec.Name]
 		if !ok {

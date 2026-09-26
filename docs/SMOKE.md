@@ -9,14 +9,17 @@ permissions, and eventual consistency.
 
 - The token is passed with `docker run --env-file .env`; the script never
   reads or prints it.
-- **Nothing is deleted.** The only destructive verb used is archive, and only
-  on an item the suite itself duplicated moments before.
+- **Nothing is deleted by default.** The only destructive verb used is
+  archive, and only on an item the suite itself duplicated moments before.
+  Permanent deletes run only with `--allow-delete`, and only on one
+  throwaway item the suite creates in that same run.
 - The sandbox phase runs with `MONDAY_WRITE_BOARD_ALLOWLIST=<sandbox board>`,
   so a bug cannot write outside that board.
 - The provision phase runs with `MONDAY_WRITE_WORKSPACE_ALLOWLIST=<workspace>`
   and a board allowlist that matches nothing, so it can only populate the
   board it just created.
-- Guard checks prove read-only mode hides write tools and that a
+- Guard checks prove `read` hides write tools, `write` hides delete tools,
+  `full` still refuses a delete without `confirm: true`, and that a
   non-allowlisted board is refused before monday is called.
 
 ## Phases
@@ -24,8 +27,9 @@ permissions, and eventual consistency.
 | Phase | Trigger | What it proves |
 |---|---|---|
 | `read` | always | account, API budget, catalog, workspaces, boards, folders, users, teams, tags, formats, templates, input validation |
-| `guard` | always | read-only mode and allowlist refusals |
+| `guard` | always | access levels (read/write/full), confirm gate, and allowlist refusals |
 | `sandbox` | `--board ID` | columns, groups, validation (valid + rejected), item CRUD, typed setters, tags, subitems, duplicate/move/archive, cursor pagination, search, filters, exact-match lookup, updates/replies/likes, notifications, bulk dry-run/all-or-nothing/execute, every report and export |
+| `delete` | `--board ID --allow-delete` | create one throwaway item, refuse delete without confirm, delete it permanently, prove it is gone |
 | `provision` | `--provision --workspace ID` | `provision_board_from_template` with validated seed items, health report, subscribers |
 
 ## Run

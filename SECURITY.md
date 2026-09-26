@@ -21,8 +21,9 @@ within five business days.
 - HTTPS-only API URL, bounded timeouts, bounded response size, bounded retries.
 - Logs go to stderr; stdout carries only MCP JSON-RPC.
 - The runtime image is distroless and runs as `nonroot`.
-- No delete operations; destructive verbs archive and require confirmation.
-- Optional read-only mode and board/workspace write allowlists
+- Access levels (`MCP_ACCESS_LEVEL`): destructive verbs archive by default;
+  permanent deletes exist only at `full` and require `confirm: true`.
+- Optional workspace scope and board/workspace write allowlists
   ([docs/CAPABILITIES.md](docs/CAPABILITIES.md)).
 
 ## Supported versions

@@ -16,14 +16,25 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// expectedToolCount is the write-level catalog; full adds the delete tools.
 const expectedToolCount = 72
+
+const expectedDeleteTools = 7
 
 func connect(t *testing.T, readOnly bool) (*mcp.ClientSession, []mcpserver.ToolSpec, *applicationtest.FakePort) {
 	t.Helper()
+	if readOnly {
+		return connectLevel(t, config.AccessRead)
+	}
+	return connectLevel(t, config.AccessWrite)
+}
+
+func connectLevel(t *testing.T, level string) (*mcp.ClientSession, []mcpserver.ToolSpec, *applicationtest.FakePort) {
+	t.Helper()
 	port := applicationtest.NewFakePort()
-	guard := application.NewWriteGuard(readOnly, nil, nil)
-	svc := application.NewService(port, application.Options{Guard: guard, Now: func() time.Time { return time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC) }})
-	server, catalog := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", ReadOnly: readOnly, ReportMaxItems: 500})
+	guard := application.NewWriteGuard(level == config.AccessRead, nil, nil)
+	svc := application.NewService(port, application.Options{Guard: guard, AllowDelete: level == config.AccessFull, Now: func() time.Time { return time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC) }})
+	server, catalog := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", AccessLevel: level, ReportMaxItems: 500})
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
@@ -87,7 +98,7 @@ func TestServerRegistersFullCatalogWithAnnotations(t *testing.T) {
 			t.Errorf("%s: missing schema or description", tool.Name)
 		}
 		if strings.Contains(strings.ToLower(tool.Name), "delete") {
-			t.Errorf("%s: delete tools are not allowed; use archive semantics", tool.Name)
+			t.Errorf("%s: permanent deletes must not be registered below MCP_ACCESS_LEVEL=full", tool.Name)
 		}
 	}
 	for _, name := range []string{"archive_item", "archive_board", "archive_group", "bulk_archive_items"} {
@@ -105,7 +116,7 @@ func TestReadOnlyModeHidesWriteTools(t *testing.T) {
 		}
 	}
 	_, info := call(t, session, "server_info", nil)
-	if info["hidden_write_tools"].(float64) != float64(expectedToolCount-len(catalog)) {
+	if info["hidden_write_tools"].(float64) != float64(expectedToolCount+expectedDeleteTools-len(catalog)) {
 		t.Fatalf("server_info = %v", info)
 	}
 	if policy := info["write_policy"].(map[string]any); policy["read_only"] != true {
@@ -170,7 +181,7 @@ func TestPromptsAreRegistered(t *testing.T) {
 
 // TestEveryToolIsDocumented keeps docs/TOOLS.md in sync with the registry.
 func TestEveryToolIsDocumented(t *testing.T) {
-	_, catalog, _ := connect(t, false)
+	_, catalog, _ := connectLevel(t, config.AccessFull)
 	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "TOOLS.md"))
 	if err != nil {
 		t.Fatalf("docs/TOOLS.md is required: %v", err)
@@ -231,5 +242,58 @@ func TestUnscopedInstructionsAskToChooseWorkspace(t *testing.T) {
 	session, _, _ := connect(t, false)
 	if !strings.Contains(session.InitializeResult().Instructions, "list_workspaces") {
 		t.Fatalf("instructions = %q", session.InitializeResult().Instructions)
+	}
+}
+
+func TestFullAccessRegistersPermanentDeletes(t *testing.T) {
+	session, catalog, port := connectLevel(t, config.AccessFull)
+	if len(catalog) != expectedToolCount+expectedDeleteTools {
+		t.Fatalf("full catalog = %d, want %d", len(catalog), expectedToolCount+expectedDeleteTools)
+	}
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deletes := 0
+	for _, tool := range tools.Tools {
+		if !strings.HasPrefix(tool.Name, "delete_") {
+			continue
+		}
+		deletes++
+		if tool.Annotations.DestructiveHint == nil || !*tool.Annotations.DestructiveHint || tool.Annotations.ReadOnlyHint {
+			t.Errorf("%s: must be annotated destructive", tool.Name)
+		}
+	}
+	if deletes != expectedDeleteTools {
+		t.Fatalf("delete tools = %d", deletes)
+	}
+	result, _ := call(t, session, "delete_item", map[string]any{"item_id": "500"})
+	if !result.IsError || !strings.Contains(errorText(result), "confirm=true") || !strings.Contains(errorText(result), "archive_item") {
+		t.Fatalf("delete without confirm = %s", errorText(result))
+	}
+	if port.MutationCount() != 0 {
+		t.Fatalf("unconfirmed delete mutated: %v", port.Mutations)
+	}
+	_, info := call(t, session, "server_info", nil)
+	if info["access_level"] != "full" {
+		t.Fatalf("access_level = %v", info["access_level"])
+	}
+	if !strings.Contains(session.InitializeResult().Instructions, "PERMANENTLY") {
+		t.Fatalf("instructions = %q", session.InitializeResult().Instructions)
+	}
+}
+
+func TestReadAndWriteLevelsHideDeletes(t *testing.T) {
+	for _, level := range []string{config.AccessRead, config.AccessWrite} {
+		session, catalog, _ := connectLevel(t, level)
+		for _, spec := range catalog {
+			if spec.Permanent {
+				t.Fatalf("%s registered at level %s", spec.Name, level)
+			}
+		}
+		_, info := call(t, session, "server_info", nil)
+		if info["access_level"] != level {
+			t.Fatalf("access_level = %v, want %s", info["access_level"], level)
+		}
 	}
 }

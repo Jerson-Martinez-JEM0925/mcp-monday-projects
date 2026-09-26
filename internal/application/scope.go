@@ -454,4 +454,57 @@ func (p *ScopedPort) CreateOrGetTag(ctx context.Context, boardID, name string) (
 	return p.Port.CreateOrGetTag(ctx, boardID, name)
 }
 
+// ---- permanent deletes ------------------------------------------------------
+
+func (p *ScopedPort) DeleteItem(ctx context.Context, itemID string) error {
+	if err := p.checkItem(ctx, itemID); err != nil {
+		return err
+	}
+	return p.Port.DeleteItem(ctx, itemID)
+}
+
+func (p *ScopedPort) DeleteGroup(ctx context.Context, boardID, groupID string) error {
+	if err := p.checkBoard(ctx, boardID); err != nil {
+		return err
+	}
+	return p.Port.DeleteGroup(ctx, boardID, groupID)
+}
+
+func (p *ScopedPort) DeleteBoard(ctx context.Context, boardID string) error {
+	if err := p.checkBoard(ctx, boardID); err != nil {
+		return err
+	}
+	return p.Port.DeleteBoard(ctx, boardID)
+}
+
+func (p *ScopedPort) DeleteColumn(ctx context.Context, boardID, columnID string) error {
+	if err := p.checkBoard(ctx, boardID); err != nil {
+		return err
+	}
+	return p.Port.DeleteColumn(ctx, boardID, columnID)
+}
+
+// DeleteFolder only deletes folders listed in the scoped workspace.
+func (p *ScopedPort) DeleteFolder(ctx context.Context, folderID string) error {
+	folders, err := p.Port.ListFolders(ctx, p.workspace, 100, 1)
+	if err != nil {
+		return err
+	}
+	for _, folder := range folders {
+		if folder.ID == folderID {
+			return p.Port.DeleteFolder(ctx, folderID)
+		}
+	}
+	return &ScopeError{Resource: "folder", ID: folderID, Scope: p.workspace}
+}
+
+// DeleteWorkspace is always refused: deleting the scope (or any other
+// workspace) is outside a scoped server's authority.
+func (p *ScopedPort) DeleteWorkspace(_ context.Context, workspaceID string) error {
+	return &ScopeError{Resource: "workspace", ID: workspaceID, Scope: p.workspace}
+}
+
+// DeleteUpdate passes through: the service resolves the update's item and
+// checks it (through this port) before calling.
+
 var _ Port = (*ScopedPort)(nil)
