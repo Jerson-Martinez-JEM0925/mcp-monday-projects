@@ -24,5 +24,7 @@ LABEL org.opencontainers.image.title="Monday.com MCP Server" \
       org.opencontainers.image.source="https://github.com/jersonmartinez/mcp-monday-projects"
 
 COPY --from=builder /out/mcp-monday-projects /mcp-monday-projects
+# Profiles are mounted read-only at /profiles (see docs/CAPABILITIES.md#profiles).
+ENV MCP_PROFILES_DIR=/profiles
 USER nonroot:nonroot
 ENTRYPOINT ["/mcp-monday-projects"]

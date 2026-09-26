@@ -20,6 +20,12 @@ All notable changes are documented here. The format follows
   boards and items are refused with a typed `ScopeError`, and
   `server_info.workspace_scope` reports the ID and name. Unscoped servers now
   instruct the client to pick a workspace (or ask the user) before writing.
+- **Profiles (#24):** `MCP_PROFILE=<name>` loads `profiles/<name>.env`, a
+  pinned target (token reference via `MONDAY_API_TOKEN_ENV`, workspace,
+  access level, allowlists) that wins over the environment. Tokens are
+  rejected in profile files and unknown keys fail at startup, as in
+  mcp-github-projects. `server_info.profile` reports the active profile; the
+  image mounts profiles at `/profiles` (`MCP_PROFILES_DIR`).
 - **Structured `.env.example`** with sections and read / write / full presets.
 
 ### Changed
