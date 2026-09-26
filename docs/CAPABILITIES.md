@@ -20,6 +20,37 @@ write policy below to narrow what an MCP client can change.
 | `tags.read` / `.write` | tags | `tags:read` / `boards:write` |
 | `reports.read` | every report | `boards:read` |
 
+## Workspace scope
+
+`MONDAY_WORKSPACE_ID=<id>` confines the server to one workspace, for **reads
+and writes**. It is enforced by a decorator on the application port
+(`internal/application/scope.go`), so every tool goes through it.
+
+It takes a numeric ID, not a name: monday does not guarantee unique workspace
+names. Find the ID with `list_workspaces` on an unscoped server.
+
+| Situation | Behaviour |
+|---|---|
+| `workspace_id` omitted | Defaults to the scope (`get_workspace`, `list_folders`, `create_folder`, `create_board`, `duplicate_board`, `provision_board_from_template`, `workspace_overview`). |
+| `list_workspaces` | Returns only the scoped workspace. |
+| `list_boards` | Filter forced to the scope; a different `workspace_ids` is refused. |
+| Board-level tools | The board's workspace is resolved (and cached) first; foreign boards are refused. |
+| Item-level tools | The item's board is resolved first; returned item pages are re-checked. |
+| `create_workspace`, `notify` with `target_type=Post` | Refused: the target cannot be verified against the scope. |
+| Users, teams, tags, `get_me`, `get_api_status` | Account-level; not scoped. |
+
+Refusals are typed (`ScopeError`), name `MONDAY_WORKSPACE_ID`, and happen
+before any mutation reaches monday. `server_info.workspace_scope` reports the
+ID and resolved name, and the MCP server instructions tell the client which
+workspace is in force.
+
+Without a scope the server stays account-wide, and its instructions tell the
+client to resolve the workspace from the request, or to call
+`list_workspaces` and ask the user before writing.
+
+The scope composes with the write policy below: `MCP_READ_ONLY` and the
+allowlists still apply inside the scoped workspace.
+
 ## Write policy
 
 The policy is enforced in the application layer (`internal/application/guard.go`)
@@ -55,5 +86,6 @@ When any allowlist is set:
 | Profile | Settings |
 |---|---|
 | Analyst / reporting | `MCP_READ_ONLY=true` |
-| Team sandbox | `MONDAY_WRITE_WORKSPACE_ALLOWLIST=<sandbox workspace>` and `MONDAY_WRITE_BOARD_ALLOWLIST=<sandbox boards>` |
+| Single-team workspace | `MONDAY_WORKSPACE_ID=<team workspace>` |
+| Team sandbox | `MONDAY_WORKSPACE_ID=<sandbox workspace>`, `MONDAY_WRITE_WORKSPACE_ALLOWLIST=<sandbox workspace>` and `MONDAY_WRITE_BOARD_ALLOWLIST=<sandbox boards>` |
 | Trusted automation | no allowlist, dedicated monday user with minimal board access |

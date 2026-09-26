@@ -105,6 +105,7 @@ func (s *Service) ListWorkspaces(ctx context.Context, limit, page int, kind, sta
 
 // GetWorkspace returns one workspace.
 func (s *Service) GetWorkspace(ctx context.Context, id string) (*domain.Workspace, error) {
+	id = s.scopedWorkspace(id)
 	if err := requireID("workspace_id", id); err != nil {
 		return nil, err
 	}
@@ -128,6 +129,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, name, kind, description s
 	if s.guard.Restricted() {
 		return nil, invalid("creating workspaces is disabled while a write allowlist is configured")
 	}
+	if s.scope != "" {
+		return nil, invalid("creating workspaces is disabled while MONDAY_WORKSPACE_ID scopes the server to workspace %s", s.scope)
+	}
 	return s.port.CreateWorkspace(ctx, name, kind, description)
 }
 
@@ -147,6 +151,7 @@ func (s *Service) ListFolders(ctx context.Context, workspaceID string, limit, pa
 
 // CreateFolder creates a folder in a workspace.
 func (s *Service) CreateFolder(ctx context.Context, workspaceID, name string) (*domain.Folder, error) {
+	workspaceID = s.scopedWorkspace(workspaceID)
 	if err := requireID("workspace_id", workspaceID); err != nil {
 		return nil, err
 	}
@@ -212,6 +217,7 @@ func (s *Service) CreateBoard(ctx context.Context, input monday.CreateBoardInput
 	if err := oneOf("board_kind", input.Kind, "public", "private", "share"); err != nil {
 		return nil, err
 	}
+	input.WorkspaceID = s.scopedWorkspace(input.WorkspaceID)
 	if input.WorkspaceID != "" {
 		if err := requireID("workspace_id", input.WorkspaceID); err != nil {
 			return nil, err
@@ -270,6 +276,7 @@ func (s *Service) DuplicateBoard(ctx context.Context, id, duplicateType, name, w
 	if err := oneOf("duplicate_type", duplicateType, "duplicate_board_with_structure", "duplicate_board_with_pulses", "duplicate_board_with_pulses_and_updates"); err != nil {
 		return nil, err
 	}
+	workspaceID = s.scopedWorkspace(workspaceID)
 	if err := s.guard.CheckWorkspace(workspaceID); err != nil {
 		return nil, err
 	}

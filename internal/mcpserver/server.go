@@ -27,6 +27,15 @@ type ServerInfoOutput struct {
 	HiddenTools  int            `json:"hidden_write_tools"`
 	WritePolicy  map[string]any `json:"write_policy"`
 	ReportBudget int            `json:"report_max_items"`
+	// WorkspaceScope is set when MONDAY_WORKSPACE_ID confines the server.
+	WorkspaceScope *WorkspaceScope `json:"workspace_scope,omitempty"`
+}
+
+// WorkspaceScope describes the workspace the server is confined to.
+type WorkspaceScope struct {
+	ID    string `json:"id"`
+	Name  string `json:"name,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // ServerInfo returns safe build/runtime metadata. It is kept as a standalone
@@ -42,11 +51,26 @@ type Options struct {
 	ReportMaxItems int
 }
 
+const baseInstructions = "Tools for monday.com workspaces, boards, items, people, updates, and reports. " +
+	"Read tools are safe. Write tools validate column values against the board schema before calling monday, " +
+	"bulk tools default to dry_run=true, and destructive operations archive instead of delete."
+
+// instructions tells the client how to pick a workspace.
+func instructions(scope string) string {
+	if scope != "" {
+		return baseInstructions + " This server is scoped to workspace " + scope +
+			" (MONDAY_WORKSPACE_ID): omit workspace_id to use it; every other workspace, and any board or item outside it, is refused. " +
+			"Call server_info to see the workspace name."
+	}
+	return baseInstructions + " No workspace scope is configured: resolve the workspace from the user's request, " +
+		"or call list_workspaces and ask the user which workspace to act on before any write."
+}
+
 // New creates the MCP server from configuration and registers every tool.
 func New(cfg config.Config) *mcp.Server {
 	client := monday.NewClient(cfg)
 	guard := application.NewWriteGuard(cfg.ReadOnly, cfg.WriteBoardAllowlist, cfg.WriteWorkspaceAllowlist)
-	svc := application.NewService(client, application.Options{Guard: guard, ReportMaxItems: cfg.ReportMaxItems})
+	svc := application.NewService(client, application.Options{Guard: guard, ReportMaxItems: cfg.ReportMaxItems, WorkspaceScope: cfg.WorkspaceID})
 	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
 	return server
 }
@@ -54,19 +78,26 @@ func New(cfg config.Config) *mcp.Server {
 // NewWithService builds the server around a service and returns its catalog.
 func NewWithService(svc *application.Service, options Options) (*mcp.Server, []ToolSpec) {
 	server := mcp.NewServer(&mcp.Implementation{Name: "mcp-monday-projects", Title: "monday.com MCP", Version: Version}, &mcp.ServerOptions{
-		Instructions: "Tools for monday.com workspaces, boards, items, people, updates, and reports. " +
-			"Read tools are safe. Write tools validate column values against the board schema before calling monday, " +
-			"bulk tools default to dry_run=true, and destructive operations archive instead of delete.",
+		Instructions: instructions(svc.WorkspaceScope()),
 	})
 	r := &registry{server: server, svc: svc, readOnly: options.ReadOnly}
 
 	add(r, ToolSpec{Name: "server_info", Category: CatDiagnostics, Title: "Server info", ReadOnly: true,
-		Description: "Return safe server metadata: version, runtime, API version, tool count, and the effective write policy (read-only mode and allowlists)."},
-		func(context.Context, ServerInfoInput) (ServerInfoOutput, error) {
-			return ServerInfoOutput{
+		Description: "Return safe server metadata: version, runtime, API version, tool count, the effective write policy (read-only mode and allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
+		func(ctx context.Context, _ ServerInfoInput) (ServerInfoOutput, error) {
+			out := ServerInfoOutput{
 				Name: "mcp-monday-projects", Version: Version, Runtime: runtime.Version(), APIVersion: options.APIVersion,
 				ToolCount: len(r.specs), HiddenTools: len(r.skipped), WritePolicy: svc.Guard().Describe(), ReportBudget: options.ReportMaxItems,
-			}, nil
+			}
+			if scope := svc.WorkspaceScope(); scope != "" {
+				out.WorkspaceScope = &WorkspaceScope{ID: scope}
+				if workspace, err := svc.GetWorkspace(ctx, scope); err != nil {
+					out.WorkspaceScope.Error = err.Error()
+				} else {
+					out.WorkspaceScope.Name = workspace.Name
+				}
+			}
+			return out, nil
 		})
 	add(r, ToolSpec{Name: "list_tool_catalog", Category: CatDiagnostics, Title: "Tool catalog", ReadOnly: true,
 		Description: "List every registered tool with its category, read-only/destructive hints, and required capability. Optionally filter by category."},

@@ -61,6 +61,7 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MCP_HTTP_TIMEOUT` | no | `15s` | Outbound request timeout |
 | `MCP_MAX_RESPONSE_BYTES` | no | `4194304` | Response size limit |
 | `MCP_MAX_RETRIES` | no | `2` | Bounded retries for transient HTTP/complexity failures |
+| `MONDAY_WORKSPACE_ID` | no | — | Confine every read and write to this workspace ID; see [workspace scope](docs/CAPABILITIES.md#workspace-scope) |
 | `MCP_READ_ONLY` | no | `false` | Hide every write tool |
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |

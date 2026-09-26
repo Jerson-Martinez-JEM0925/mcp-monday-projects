@@ -27,6 +27,8 @@ type Config struct {
 	WriteBoardAllowlist []string
 	// WriteWorkspaceAllowlist restricts board/folder creation to these workspaces.
 	WriteWorkspaceAllowlist []string
+	// WorkspaceID scopes every read and write to one workspace when set.
+	WorkspaceID string
 	// ReportMaxItems bounds how many items a report loads per board.
 	ReportMaxItems int
 }
@@ -69,6 +71,12 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	workspaceID := strings.TrimSpace(os.Getenv("MONDAY_WORKSPACE_ID"))
+	if workspaceID != "" {
+		if _, err := strconv.ParseUint(workspaceID, 10, 64); err != nil {
+			return Config{}, fmt.Errorf("MONDAY_WORKSPACE_ID must be a single numeric workspace ID (names are not unique in monday)")
+		}
+	}
 	reportMax, err := parseInt64("MCP_REPORT_MAX_ITEMS", 500)
 	if err != nil || reportMax < 1 || reportMax > 5000 {
 		return Config{}, fmt.Errorf("MCP_REPORT_MAX_ITEMS must be between 1 and 5000")
@@ -85,6 +93,7 @@ func Load() (Config, error) {
 		ReadOnly:                readOnly,
 		WriteBoardAllowlist:     boards,
 		WriteWorkspaceAllowlist: workspaces,
+		WorkspaceID:             workspaceID,
 		ReportMaxItems:          int(reportMax),
 	}, nil
 }
