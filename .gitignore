@@ -37,3 +37,4 @@ profiles/*.env
 # Local smoke output and agent tooling
 smoke-report.md
 .kiro/
+wiki_out/

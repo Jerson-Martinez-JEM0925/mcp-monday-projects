@@ -1,0 +1,45 @@
+---
+# Labels Sync
+# Reconciles repository labels with .github/labels.yaml: creates missing
+# labels and updates colors/descriptions. It never deletes a label
+# (skip-delete), so labels on existing issues and PRs stay intact.
+name: Labels Sync
+run-name: 'Labels Sync — ${{ github.ref_name }}'
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/labels.yaml']
+  pull_request:
+    paths: ['.github/labels.yaml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labels-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Sync labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # On a pull request this is a dry run: it prints the plan and changes
+      # nothing, so a bad labels file is caught before merge.
+      - name: Apply .github/labels.yaml
+        uses: crazy-max/ghaction-github-labeler@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          yaml-file: .github/labels.yaml
+          skip-delete: true
+          dry-run: ${{ github.event_name == 'pull_request' }}

@@ -1,0 +1,16 @@
+---
+# markdownlint-cli2 configuration (used by .github/workflows/pr-checks.yaml).
+globs:
+  - '**/*.md'
+ignores:
+  - '.git/**'
+config:
+  default: true
+  # Long tables and URLs are normal in reference docs.
+  MD013: false
+  # Tool tables use inline HTML-free Markdown; allow repeated headings in
+  # different sections (e.g. "Parameters" under every tool).
+  MD024:
+    siblings_only: true
+  # The PR template starts with a section heading, not a document title.
+  MD041: false

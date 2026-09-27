@@ -7,7 +7,7 @@ SMOKE_WORKSPACE ?=
 SMOKE_USER ?=
 SMOKE_REPORT ?= smoke-report.md
 
-.PHONY: help build up run down logs test race fmt fmt-check vet validate clean probe tools smoke smoke-provision docs-tools
+.PHONY: help build up run down logs test race fmt fmt-check vet coverage lint wiki-preview validate clean probe tools smoke smoke-provision docs-tools
 
 help: ## Show available Docker-first targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -67,8 +67,16 @@ coverage: ## Enforce >= 80% statement coverage on application and monday
 	docker build --target builder -t $(IMAGE)-builder .
 	docker run --rm $(IMAGE)-builder sh scripts/coverage_gate.sh
 
-validate: build test race fmt-check vet coverage ## Run the complete local validation suite
+validate: build test race fmt-check vet coverage lint ## Run the complete local validation suite
 	@echo "Validation passed"
+
+lint: ## YAML, shell, Markdown and doc-link lint (same tools as the PR Checks workflow)
+	docker run --rm -v "$(CURDIR)":/src -w /src python:3.12-slim sh -c 'pip -q install yamllint==1.37.1 && yamllint -c .yamllint.yaml . && python3 scripts/check_doc_links.py'
+	docker run --rm -v "$(CURDIR)":/src -w /src koalaman/shellcheck-alpine:stable sh -c 'shellcheck scripts/*.sh'
+	docker run --rm -v "$(CURDIR)":/src -w /src node:20-alpine npx --yes markdownlint-cli2@0.18.1
+
+wiki-preview: ## Build the Wiki pages from docs/ into ./wiki_out (no push)
+	DRY_RUN=1 REPO=jersonmartinez/mcp-monday-projects bash scripts/wiki_sync.sh
 
 clean: ## Remove local images and Compose resources
 	$(COMPOSE) down --remove-orphans
