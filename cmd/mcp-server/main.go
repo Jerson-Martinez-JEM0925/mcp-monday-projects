@@ -17,7 +17,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	// MCP_LOG_LEVEL is validated by config.Load (debug|info|warn|error), so
+	// UnmarshalText cannot fail here; logs always go to stderr.
+	var level slog.Level
+	_ = level.UnmarshalText([]byte(cfg.LogLevel))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	logger.Info("starting mcp-monday-projects", "api_version", cfg.APIVersion, "profile", cfg.Profile, "access_level", cfg.AccessLevel)
 	server := mcpserver.New(cfg)
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {

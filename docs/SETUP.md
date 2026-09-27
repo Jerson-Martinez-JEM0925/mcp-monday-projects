@@ -35,15 +35,18 @@ logs are written to stderr.
 
 ## MCP client configuration
 
-Build the image once (`make build`), then register the server in any MCP
-client that supports stdio. The client starts one container per session:
+Use the published image (`ghcr.io/jersonmartinez/mcp-monday-projects:0.3.0`,
+also tagged `0.3` and `latest`; see [RELEASING.md](RELEASING.md)) or build
+your own with `make build`, which tags `mcp-monday-projects:local`. Register
+the server in any MCP client that supports stdio. The client starts one
+container per session:
 
 ```json
 {
   "mcpServers": {
     "monday": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "--env-file", "/path/to/mcp-monday-projects/.env", "mcp-monday-projects:local"]
+      "args": ["run", "--rm", "-i", "--env-file", "/path/to/mcp-monday-projects/.env", "ghcr.io/jersonmartinez/mcp-monday-projects:0.3.0"]
     }
   }
 }
@@ -86,10 +89,19 @@ make validate
 All commands execute in Docker or Docker Compose; no Go installation is
 required on the host.
 
-GitHub Actions mirrors this Docker-first validation: the Go checks build the
-builder image and run formatting, module-integrity verification, tests, and
-`go vet` inside it. The security workflow runs a repository secret scan on
-pull requests, pushes to `main`, and the weekly schedule.
+GitHub Actions mirrors this Docker-first validation:
+
+- **CI** builds the builder image and runs `gofmt`, `go mod verify`, the
+  tests, the coverage gate (`scripts/coverage_gate.sh`, ≥ 80% on
+  `internal/application` and `internal/monday`), race-enabled tests and
+  `go vet`, then builds the runtime image.
+- **PR Checks** validates the PR title (Conventional Commits) and branch
+  name, and lints YAML, shell scripts, Markdown and relative doc links —
+  the same checks as `make lint`.
+- **Security** runs a gitleaks secret scan on pull requests, pushes to
+  `main` and a weekly schedule.
+- **Labels sync** applies `.github/labels.yaml` (never deletes a label) and
+  **Docs Wiki sync** publishes `docs/` to the Wiki once the Wiki exists.
 
 The GraphQL transport retries only transient network failures, HTTP 429,
 HTTP 5xx responses, and monday complexity/rate-limit GraphQL errors (honoring

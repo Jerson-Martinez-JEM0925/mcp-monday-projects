@@ -124,3 +124,25 @@ func TestLoadAccessLevel(t *testing.T) {
 		}
 	}
 }
+
+// MCP_LOG_LEVEL used to be read but ignored (logs were always INFO); it is
+// now validated and normalized so cmd/mcp-server can apply it.
+func TestLoadLogLevel(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "test-token")
+	for _, tc := range []struct{ in, want string }{
+		{"", "info"}, {"DEBUG", "debug"}, {" warn ", "warn"}, {"error", "error"},
+	} {
+		t.Setenv("MCP_LOG_LEVEL", tc.in)
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("MCP_LOG_LEVEL=%q: Load() error = %v", tc.in, err)
+		}
+		if cfg.LogLevel != tc.want {
+			t.Fatalf("MCP_LOG_LEVEL=%q: LogLevel = %q, want %q", tc.in, cfg.LogLevel, tc.want)
+		}
+	}
+	t.Setenv("MCP_LOG_LEVEL", "verbose")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() error = nil, want MCP_LOG_LEVEL validation error")
+	}
+}
