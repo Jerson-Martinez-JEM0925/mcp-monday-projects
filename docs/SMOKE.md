@@ -50,7 +50,8 @@ python3 scripts/smoke.py --board 1234567890 --assign-user 12345678 \
 
 The suite is idempotent on the sandbox board: it creates missing columns and
 groups once, then adds timestamped items on each run. A Markdown report
-(`--report`) is suitable for attaching to a PR.
+(`--report`) records every PASS/FAIL line; review it before sharing, because
+it contains board and item URLs of the account under test.
 
 ## Reference run
 

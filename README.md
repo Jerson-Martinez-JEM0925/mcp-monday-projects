@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jersonmartinez/mcp-monday-projects/actions/workflows/ci.yaml/badge.svg)](https://github.com/jersonmartinez/mcp-monday-projects/actions/workflows/ci.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.25-00ADD8.svg?logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8.svg?logo=go)](go.mod)
 [![Docker](https://img.shields.io/badge/Docker--first-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 
 A high-performance, Docker-first [Model Context Protocol](https://modelcontextprotocol.io/) server for monday.com, written in Go. It works with any MCP client that supports the stdio transport.
@@ -30,7 +30,7 @@ make probe TOOL=get_me
 make run            # stdio server for an MCP client
 ```
 
-Only Docker and Docker Compose are required on the host. Go, tests, formatting, and runtime execution are containerized through the Makefile. MCP client configuration is in [docs/SETUP.md](docs/SETUP.md#mcp-client-configuration).
+Only Docker and Docker Compose are required on the host. Go, tests, formatting, and runtime execution are containerized through the Makefile. A prebuilt multi-arch image is published on each release as `ghcr.io/jersonmartinez/mcp-monday-projects:<version>`. MCP client configuration is in [docs/SETUP.md](docs/SETUP.md#mcp-client-configuration); a task-oriented walkthrough is in [docs/USAGE.md](docs/USAGE.md).
 
 ## Tool catalog
 
@@ -68,8 +68,10 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |
+| `MCP_LOG_LEVEL` | no | `info` | stderr log level: `debug`, `info`, `warn`, `error` |
 | `MCP_PROFILE` | no | — | Load `profiles/<name>.env`, a pinned target (token reference, workspace, access level, allowlists); see [profiles](docs/CAPABILITIES.md#profiles) |
 | `MCP_PROFILES_DIR` | no | `/profiles` in the image | Directory that holds profile files |
+| `MONDAY_API_TOKEN_ENV` | no | — | In a profile: the NAME of the variable holding that account's token (profiles never contain the token itself) |
 
 See [docs/SETUP.md](docs/SETUP.md) for token handling and API versioning. Confirm the stable version against Monday's [versioning documentation](https://developer.monday.com/api-reference/docs/api-versioning) before upgrades.
 
@@ -94,30 +96,42 @@ The protocol layer never builds GraphQL. Decisions are recorded in [docs/adr](do
 
 ```text
 make help             Show targets
-make build            Build the runtime image
+make build            Build the runtime image (mcp-monday-projects:local)
 make run              Run the stdio MCP server
+make up / down / logs Start, stop and follow the Compose service
 make test             Run Go tests in Docker
 make race             Run race-enabled tests in Docker
 make fmt / fmt-check  Format / verify gofmt in Docker
 make vet              Run go vet in Docker
-make validate         Full local validation (build, test, race, fmt, vet)
+make coverage         Enforce >= 80% coverage on application and monday
+make lint             YAML, shell, Markdown and doc-link lint (as PR Checks)
+make validate         Full local validation (build, test, race, fmt-check, vet, coverage, lint)
 make tools            List registered tools
 make probe            Call one tool: make probe TOOL=get_me ARGS='{}'
 make smoke            Real-account smoke suite on a sandbox board
+make smoke-provision  Create a template board in a sandbox workspace
 make docs-tools       Regenerate the catalog in docs/TOOLS.md
-make down             Stop Compose resources
+make wiki-preview     Build the Wiki pages from docs/ into ./wiki_out
+make clean            Remove local images and Compose resources
 ```
+
+The server is built with the Go 1.27.1 toolchain image; `go.mod` requires Go
+1.25 or later.
 
 ## Documentation
 
 | Document | Content |
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Token, versioning, MCP client configuration, validation |
-| [docs/TOOLS.md](docs/TOOLS.md) | Tool reference, conventions, examples, prompts |
+| [docs/USAGE.md](docs/USAGE.md) | Task-oriented guide: find, read, write, bulk, reports, templates |
+| [docs/TOOLS.md](docs/TOOLS.md) | Generated tool reference, conventions, examples, prompts |
 | [docs/COLUMN_VALUES.md](docs/COLUMN_VALUES.md) | Accepted value formats and rejection rules |
-| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability matrix and write policy |
+| [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability matrix, access levels, profiles, workspace scope, write policy |
 | [docs/REPORTS.md](docs/REPORTS.md) | Report semantics and health score |
 | [docs/SMOKE.md](docs/SMOKE.md) | Real-account smoke suite |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Every startup, policy and validation error with its fix |
+| [docs/RELEASING.md](docs/RELEASING.md) | Versioning, the release workflow and the GHCR image |
+| [docs/adr](docs/adr/README.md) | Architecture decision records |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ## Collaboration

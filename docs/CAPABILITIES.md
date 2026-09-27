@@ -29,7 +29,7 @@ level is invisible to the client; `server_info.access_level` and
 | Level | Tools | Use it for |
 |---|---|---|
 | `read` | 39 read tools: schema, search, reports, diagnostics | Analysts, dashboards, audits |
-| `write` (default) | + 33 write tools: create, update, move, archive, bulk | Day-to-day work; archive is restorable for 30 days |
+| `write` (default) | + 33 write tools: create, update, move, archive, bulk | Day-to-day work; archived objects can be restored from monday at any time |
 | `full` | + 7 permanent deletes (`delete_*`) | Cleanup and maintenance by a trusted operator |
 
 Permanent deletes (`internal/application/deletes.go`):
@@ -127,11 +127,15 @@ When any allowlist is set:
 
 ## Safety properties
 
-- Below `full`, no tool deletes anything. `archive_*` tools archive
-  (restorable in monday for 30 days); `archive_board` and `archive_group`
-  require `confirm: true`.
+- Below `full`, no tool deletes anything. `archive_*` tools archive, and
+  monday keeps archived boards, groups and items until someone restores them
+  (no time limit); `archive_board` and `archive_group` require
+  `confirm: true`.
 - At `full`, every `delete_*` tool requires `confirm: true` and is guarded
-  like any other mutation.
+  like any other mutation. The server offers no way back: per monday's
+  documentation, deleted objects sit in the account's Trash for 30 days,
+  where only an admin or the user who deleted them can restore them from the
+  monday UI, and are then gone for good.
 - Bulk tools are capped at 50 rows and default to `dry_run: true`.
 - `create_labels_if_missing` is always `false`.
 - Every tool advertises MCP annotations (`readOnlyHint`, `destructiveHint`)

@@ -12,7 +12,7 @@ import (
 )
 
 // Version is the server release version.
-const Version = "0.2.0"
+const Version = "0.3.0"
 
 // ServerInfoInput is intentionally empty; it makes the diagnostic tool easy to call.
 type ServerInfoInput struct{}

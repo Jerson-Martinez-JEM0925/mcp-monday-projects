@@ -6,8 +6,21 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] — Operational parity
+
 ### Added
 
+- **Usage and troubleshooting guides (#27):** `docs/USAGE.md` walks through
+  the tools by task (connection, discovery, reads, validated writes, bulk
+  plan → apply, archive vs. delete, collaboration, reports, templates);
+  `docs/TROUBLESHOOTING.md` lists every startup, policy, validation and
+  rate-limit message the server emits, captured from the real binary, with
+  its fix.
+- **Release workflow (#28):** a `vX.Y.Z` tag checks that the tag matches the
+  code `Version` and a CHANGELOG section (`scripts/release_notes.sh`), builds
+  `linux/amd64` + `linux/arm64`, pushes `ghcr.io/jersonmartinez/mcp-monday-projects`
+  (`X.Y.Z`, `X.Y`, `latest`) and publishes the GitHub release. See
+  `docs/RELEASING.md`.
 - **Repository automation (#26):** `pr-checks.yaml` (Conventional Commits PR
   title, branch name, yamllint, shellcheck, markdownlint, relative doc links),
   `labels-sync.yaml` (labels declared in `.github/labels.yaml`, never deleted)
@@ -46,6 +59,19 @@ All notable changes are documented here. The format follows
   minimum stays 1.25), `actions/checkout` v4 -> v7, `gitleaks-action` v2 -> v3.
   Supersedes Dependabot PRs #9, #10 and #11.
 - `MCP_READ_ONLY` is a deprecated alias of `MCP_ACCESS_LEVEL=read`.
+
+### Fixed
+
+- **`MCP_LOG_LEVEL` was read but ignored** (logs were always INFO). It is now
+  validated (`debug`, `info`, `warn`, `error`; anything else fails at startup)
+  and applied to the stderr logger.
+- **Docs audit (#27)** against the code: CAPABILITIES said archived objects
+  are restorable for 30 days — monday keeps archives with no time limit (the
+  30 days apply to deleted objects in monday's Trash), now stated precisely;
+  README gains `MCP_LOG_LEVEL`, `MONDAY_API_TOKEN_ENV`, the full list of Make
+  targets and the new guides; SETUP describes every workflow (coverage, race,
+  PR Checks, labels, Wiki) instead of the original two; SMOKE warns that the
+  `--report` file contains account URLs.
 
 ## [0.2.0] — Operational MVP
 

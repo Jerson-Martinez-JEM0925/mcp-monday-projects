@@ -103,12 +103,18 @@ func (env source) config() (Config, error) {
 	if err != nil || reportMax < 1 || reportMax > 5000 {
 		return Config{}, fmt.Errorf("MCP_REPORT_MAX_ITEMS must be between 1 and 5000")
 	}
+	logLevel := strings.ToLower(strings.TrimSpace(env.valueOrDefault("MCP_LOG_LEVEL", "info")))
+	switch logLevel {
+	case "debug", "info", "warn", "error":
+	default:
+		return Config{}, fmt.Errorf("MCP_LOG_LEVEL must be debug, info, warn, or error")
+	}
 
 	return Config{
 		APIToken:                token,
 		APIVersion:              env.valueOrDefault("MONDAY_API_VERSION", defaultAPIVersion),
 		APIURL:                  apiURL,
-		LogLevel:                env.valueOrDefault("MCP_LOG_LEVEL", "info"),
+		LogLevel:                logLevel,
 		HTTPTimeout:             timeout,
 		MaxResponseBytes:        maxResponseBytes,
 		MaxRetries:              int(retries),
