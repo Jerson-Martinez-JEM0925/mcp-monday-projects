@@ -4,6 +4,20 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] — Stable contract
+
+### Changed
+
+- **Stable v1 contract:** tool names, schemas, access levels, structured errors,
+  and documented environment variables are now protected by a schema digest
+  regression test. Breaking changes require a major version.
+- **Access policy:** removed the ambiguous `MCP_READ_ONLY` compatibility
+  variable. Use `MCP_ACCESS_LEVEL=read|write|full` explicitly.
+- **Documentation:** clarified that archive retention is controlled by monday,
+  and recorded that live smoke validation used an administrator token. Member
+  permissions still require a separate member-owned token and have not been
+  validated.
+
 ## [Unreleased]
 
 ## [0.3.0] — Operational parity

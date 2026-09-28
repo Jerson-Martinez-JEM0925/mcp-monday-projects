@@ -63,8 +63,7 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MCP_MAX_RESPONSE_BYTES` | no | `4194304` | Response size limit |
 | `MCP_MAX_RETRIES` | no | `2` | Bounded retries for transient HTTP/complexity failures |
 | `MONDAY_WORKSPACE_ID` | no | — | Confine every read and write to this workspace ID; see [workspace scope](docs/CAPABILITIES.md#workspace-scope) |
-| `MCP_ACCESS_LEVEL` | no | `write` | `read` (read tools only), `write` (create/update/archive), or `full` (also permanent deletes); see [access levels](docs/CAPABILITIES.md#access-levels) |
-| `MCP_READ_ONLY` | no | `false` | Deprecated alias of `MCP_ACCESS_LEVEL=read` |
+| `MCP_ACCESS_LEVEL` | no | `write` | `read` (read tools only), `write` (create/update/archive), or `full` (also permanent deletes); `MCP_READ_ONLY` was removed in v1.0.0 |
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |

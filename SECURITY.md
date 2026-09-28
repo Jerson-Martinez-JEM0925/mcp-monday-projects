@@ -28,4 +28,15 @@ within five business days.
 
 ## Supported versions
 
-Only the latest release on `main` receives security fixes.
+| Version | Supported |
+|---------|-----------|
+| 1.x     | Yes       |
+| 0.x     | No        |
+
+The stable contract covers tool names, input/output schemas, environment
+variables, access-level semantics, and structured error categories. Compatible
+additions may be released as a minor version. Removing or renaming a tool,
+parameter, environment variable, or error field requires a major version.
+Deprecated behaviour is documented for one minor release before removal. The
+MCP is validated with an administrator token; member-token validation remains a
+known limitation and is documented in `docs/SMOKE.md`.

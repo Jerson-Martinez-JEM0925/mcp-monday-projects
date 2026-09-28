@@ -2,9 +2,12 @@ package mcpserver_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -314,4 +317,36 @@ func TestServerInfoReportsProfile(t *testing.T) {
 	if _, info := call(t, session, "server_info", nil); info["profile"] != "devops" {
 		t.Fatalf("profile = %v", info["profile"])
 	}
+}
+
+// TestStableToolSchemas freezes the v1.x protocol surface. Intentional schema
+// changes must update this digest and the release notes in the same PR.
+func TestStableToolSchemas(t *testing.T) {
+	session, _, _ := connectLevel(t, config.AccessFull)
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type contract struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Input       any    `json:"input_schema"`
+		Output      any    `json:"output_schema"`
+	}
+	contracts := make([]contract, 0, len(tools.Tools))
+	for _, tool := range tools.Tools {
+		contracts = append(contracts, contract{Name: tool.Name, Description: tool.Description, Input: tool.InputSchema, Output: tool.OutputSchema})
+	}
+	sort.Slice(contracts, func(i, j int) bool { return contracts[i].Name < contracts[j].Name })
+	raw, err := json.Marshal(contracts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(raw)
+	got := hex.EncodeToString(sum[:])
+	const expected = "23ac4d046a2fb516d8d73fd9a4bfc42d0e44140ea8824794547233265198571e"
+	if got != expected {
+		t.Fatalf("stable tool schema digest changed: got %s; update intentionally with release notes", got)
+	}
+	t.Logf("stable tool schema digest: %s (%d tools)", got, len(contracts))
 }

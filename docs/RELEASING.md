@@ -3,6 +3,13 @@
 Releases follow [Semantic Versioning](https://semver.org/). A release is a
 `vX.Y.Z` tag on `main`; `.github/workflows/release.yaml` does the rest.
 
+The `1.x` line is the stable contract. Tool names, schemas, documented
+environment variables, access-level semantics and structured error fields are
+covered by regression tests. Removing or renaming one requires a major version.
+The release process does not claim Member-level permissions have been tested:
+Monday personal tokens are owned by the individual user, and a Member must
+create their own token for that validation.
+
 ## What the workflow does
 
 1. `scripts/release_notes.sh vX.Y.Z` refuses the release unless the tag

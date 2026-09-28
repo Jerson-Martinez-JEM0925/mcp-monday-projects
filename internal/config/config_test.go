@@ -46,7 +46,7 @@ func TestLoadRejectsNonHTTPSURL(t *testing.T) {
 
 func TestLoadWritePolicy(t *testing.T) {
 	t.Setenv("MONDAY_API_TOKEN", "test-token")
-	t.Setenv("MCP_READ_ONLY", "true")
+	t.Setenv("MCP_ACCESS_LEVEL", "read")
 	t.Setenv("MONDAY_WRITE_BOARD_ALLOWLIST", " 123, 456 ,")
 	t.Setenv("MONDAY_WRITE_WORKSPACE_ALLOWLIST", "789")
 	t.Setenv("MCP_REPORT_MAX_ITEMS", "250")
@@ -61,11 +61,11 @@ func TestLoadWritePolicy(t *testing.T) {
 
 func TestLoadRejectsInvalidWritePolicy(t *testing.T) {
 	cases := map[string]string{
-		"MCP_READ_ONLY":                    "maybe",
 		"MONDAY_WRITE_BOARD_ALLOWLIST":     "12,abc",
 		"MONDAY_WRITE_WORKSPACE_ALLOWLIST": "-1",
 		"MCP_REPORT_MAX_ITEMS":             "0",
 		"MONDAY_WORKSPACE_ID":              "DevOps",
+		"MCP_READ_ONLY":                    "true",
 	}
 	for name, value := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -97,31 +97,36 @@ func TestLoadWorkspaceScope(t *testing.T) {
 
 func TestLoadAccessLevel(t *testing.T) {
 	cases := []struct {
-		level, readOnly, want string
-		readOnlyWant          bool
+		level, want  string
+		readOnlyWant bool
 	}{
-		{"", "", AccessWrite, false},
-		{"read", "", AccessRead, true},
-		{"WRITE", "", AccessWrite, false},
-		{"full", "", AccessFull, false},
-		{"", "true", AccessRead, true},
-		{"read", "true", AccessRead, true},
+		{"", AccessWrite, false},
+		{"read", AccessRead, true},
+		{"WRITE", AccessWrite, false},
+		{"full", AccessFull, false},
 	}
 	for _, tc := range cases {
-		t.Setenv("MONDAY_API_TOKEN", "test-token")
-		t.Setenv("MCP_ACCESS_LEVEL", tc.level)
-		t.Setenv("MCP_READ_ONLY", tc.readOnly)
-		cfg, err := Load()
-		if err != nil || cfg.AccessLevel != tc.want || cfg.ReadOnly != tc.readOnlyWant {
-			t.Fatalf("level=%q read_only=%q: got %q/%v, err %v", tc.level, tc.readOnly, cfg.AccessLevel, cfg.ReadOnly, err)
+		t.Run(tc.level, func(t *testing.T) {
+			t.Setenv("MONDAY_API_TOKEN", "test-token")
+			t.Setenv("MCP_ACCESS_LEVEL", tc.level)
+			t.Setenv("MCP_READ_ONLY", "")
+			cfg, err := Load()
+			if err != nil || cfg.AccessLevel != tc.want || cfg.ReadOnly != tc.readOnlyWant {
+				t.Fatalf("level=%q: got %q/%v, err %v", tc.level, cfg.AccessLevel, cfg.ReadOnly, err)
+			}
+		})
+	}
+	for _, bad := range []string{"admin", "read-only"} {
+		t.Setenv("MCP_ACCESS_LEVEL", bad)
+		t.Setenv("MCP_READ_ONLY", "")
+		if _, err := Load(); err == nil {
+			t.Fatalf("Load() accepted MCP_ACCESS_LEVEL=%s", bad)
 		}
 	}
-	for _, bad := range [][2]string{{"admin", ""}, {"full", "true"}, {"write", "true"}} {
-		t.Setenv("MCP_ACCESS_LEVEL", bad[0])
-		t.Setenv("MCP_READ_ONLY", bad[1])
-		if _, err := Load(); err == nil {
-			t.Fatalf("Load() accepted MCP_ACCESS_LEVEL=%s MCP_READ_ONLY=%s", bad[0], bad[1])
-		}
+	t.Setenv("MCP_ACCESS_LEVEL", "write")
+	t.Setenv("MCP_READ_ONLY", "true")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() accepted removed MCP_READ_ONLY")
 	}
 }
 

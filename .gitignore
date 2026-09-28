@@ -38,3 +38,6 @@ profiles/*.env
 smoke-report.md
 .kiro/
 wiki_out/
+
+__pycache__/
+*.pyc
