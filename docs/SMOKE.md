@@ -7,6 +7,10 @@ permissions, and eventual consistency.
 
 ## Safety model
 
+- The suite has been run with an administrator token. monday personal tokens
+are user-scoped, so this does not prove that every operation is permitted for a
+Member account. Before using a Member token in production, run the same suite
+with that token and record any permission-specific exclusions.
 - The token is passed with `docker run --env-file .env`; the script never
   reads or prints it.
 - **Nothing is deleted by default.** The only destructive verb used is

@@ -26,6 +26,10 @@ write policy below to narrow what an MCP client can change.
 level is invisible to the client; `server_info.access_level` and
 `server_info.hidden_write_tools` report the effective surface.
 
+`MCP_READ_ONLY` was removed in v1.0.0. Configurations must use
+`MCP_ACCESS_LEVEL=read|write|full`; supplying the removed variable is a startup
+error so an old deployment cannot silently select a different policy.
+
 | Level | Tools | Use it for |
 |---|---|---|
 | `read` | 39 read tools: schema, search, reports, diagnostics | Analysts, dashboards, audits |
@@ -45,8 +49,11 @@ Permanent deletes (`internal/application/deletes.go`):
   `delete_workspace` is refused whenever a scope or allowlist is set; the
   `name` column cannot be deleted.
 
-`MCP_READ_ONLY=true` remains a deprecated alias of `read`; combining it with
-`MCP_ACCESS_LEVEL=write|full` fails at startup.
+Archived objects remain recoverable through monday; the retention period is
+controlled by monday and is not promised by this server.
+
+`MCP_READ_ONLY=true` was removed in v1.0.0. Use `MCP_ACCESS_LEVEL=read` for a
+read-only deployment.
 
 ## Profiles
 

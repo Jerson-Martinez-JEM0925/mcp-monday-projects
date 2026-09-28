@@ -134,27 +134,22 @@ const (
 	AccessFull  = "full"
 )
 
-// parseAccessLevel reads MCP_ACCESS_LEVEL, keeping MCP_READ_ONLY=true as a
-// backward-compatible alias for read. Contradictory settings are rejected.
+// parseAccessLevel reads the stable MCP_ACCESS_LEVEL contract.
+// MCP_READ_ONLY was removed before v1.0.0; keeping one source of truth avoids
+// contradictory policies when both variables are present.
 func (env source) parseAccessLevel() (string, error) {
-	readOnly, err := strconv.ParseBool(env.valueOrDefault("MCP_READ_ONLY", "false"))
-	if err != nil {
-		return "", fmt.Errorf("MCP_READ_ONLY must be true or false")
+	if strings.TrimSpace(env.get("MCP_READ_ONLY")) != "" {
+		return "", fmt.Errorf("MCP_READ_ONLY was removed; use MCP_ACCESS_LEVEL=read, write, or full")
 	}
 	raw := strings.ToLower(strings.TrimSpace(env.get("MCP_ACCESS_LEVEL")))
 	switch raw {
 	case "":
-		if readOnly {
-			return AccessRead, nil
-		}
 		return AccessWrite, nil
 	case AccessRead, AccessWrite, AccessFull:
-		if readOnly && raw != AccessRead {
-			return "", fmt.Errorf("MCP_READ_ONLY=true contradicts MCP_ACCESS_LEVEL=%s; remove MCP_READ_ONLY (deprecated) or set MCP_ACCESS_LEVEL=read", raw)
-		}
 		return raw, nil
+	default:
+		return "", fmt.Errorf("MCP_ACCESS_LEVEL must be read, write, or full")
 	}
-	return "", fmt.Errorf("MCP_ACCESS_LEVEL must be read, write, or full")
 }
 
 func (env source) parseIDList(name string) ([]string, error) {

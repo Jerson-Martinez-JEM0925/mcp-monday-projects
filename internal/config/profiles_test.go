@@ -20,7 +20,7 @@ func writeProfile(t *testing.T, name, body string) string {
 
 func clearPolicyEnv(t *testing.T) {
 	t.Helper()
-	for _, name := range []string{"MCP_ACCESS_LEVEL", "MCP_READ_ONLY", "MONDAY_WORKSPACE_ID", "MONDAY_WRITE_BOARD_ALLOWLIST", "MONDAY_WRITE_WORKSPACE_ALLOWLIST", "MCP_REPORT_MAX_ITEMS"} {
+	for _, name := range []string{"MCP_ACCESS_LEVEL", "MONDAY_WORKSPACE_ID", "MONDAY_WRITE_BOARD_ALLOWLIST", "MONDAY_WRITE_WORKSPACE_ALLOWLIST", "MCP_REPORT_MAX_ITEMS"} {
 		t.Setenv(name, "")
 	}
 }
