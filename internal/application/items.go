@@ -168,11 +168,36 @@ func (s *Service) CreateItem(ctx context.Context, boardID, groupID, name string,
 	if err := s.guard.CheckBoard(boardID); err != nil {
 		return nil, err
 	}
+	if groupID != "" {
+		if err := s.validateGroup(ctx, boardID, groupID); err != nil {
+			return nil, err
+		}
+	}
 	normalized, err := s.validated(ctx, boardID, values)
 	if err != nil {
 		return nil, err
 	}
-	return s.port.CreateItem(ctx, boardID, groupID, name, normalized)
+	item, err := s.port.CreateItem(ctx, boardID, groupID, name, normalized)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil || item.ID == "" {
+		return nil, invalid("create_item returned an incomplete item response: missing item_id; no reliable item reference was produced")
+	}
+	return item, nil
+}
+
+func (s *Service) validateGroup(ctx context.Context, boardID, groupID string) error {
+	groups, err := s.port.ListGroups(ctx, boardID)
+	if err != nil {
+		return fmt.Errorf("validate group %q: %w", groupID, err)
+	}
+	for _, group := range groups {
+		if group.ID == groupID && !group.Archived {
+			return nil
+		}
+	}
+	return &monday.NotFoundError{Resource: "active group", ID: groupID}
 }
 
 func (s *Service) validated(ctx context.Context, boardID string, values map[string]any) (map[string]any, error) {
