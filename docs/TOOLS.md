@@ -97,7 +97,7 @@ _79 tools, generated from `list_tool_catalog`._
 |---|---|---|---|
 | `archive_item` | write · archive | `items.write` | Archive (never delete) a monday.com item; it can be restored from monday's archive. |
 | `assign_item_people` | write | `items.write` | Assign users or teams to an item's people column (auto-detected); an empty list clears it. |
-| `create_item` | write | `items.write` | Create an item; column values are validated by type against the board schema before monday is called. |
+| `create_item` | write | `items.write` | Create an item; when `group_id` is supplied it must identify an active group on the target board, and column values are validated before monday is called. An incomplete provider response is returned as an actionable error. |
 | `create_subitem` | write | `items.write` | Create a subitem under a parent item; values are validated against the subitems board. |
 | `duplicate_item` | write | `items.write` | Duplicate an item, optionally with its updates. |
 | `move_item` | write | `items.write` | Move a monday.com item to another group. |

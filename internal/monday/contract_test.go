@@ -261,3 +261,11 @@ func TestResponseLimitIsEnforced(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestCreateItemRejectsIncompleteResponse(t *testing.T) {
+	client, _ := newContractClient(t, "CreateItem", `{"data":{"create_item":{}}}`)
+	_, err := client.CreateItem(context.Background(), "7", "", "Task", nil)
+	if err == nil || !strings.Contains(err.Error(), "incomplete create_item response") {
+		t.Fatalf("err = %v, want incomplete response error", err)
+	}
+}

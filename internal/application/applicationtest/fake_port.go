@@ -23,6 +23,8 @@ type FakePort struct {
 	nextID    int
 	PageSize  int
 	FailOn    map[string]error
+	// ReturnIncompleteCreateItem simulates a provider response without an item ID.
+	ReturnIncompleteCreateItem bool
 	// BoardWorkspace overrides a board's workspace (default "7").
 	BoardWorkspace map[string]string
 }
@@ -239,6 +241,9 @@ func (f *FakePort) GetItems(_ context.Context, ids []string) ([]domain.Item, err
 	return items, nil
 }
 func (f *FakePort) CreateItem(_ context.Context, boardID, groupID, name string, _ map[string]any) (*domain.Item, error) {
+	if f.ReturnIncompleteCreateItem {
+		return nil, f.record("create_item")
+	}
 	item := domain.Item{ID: f.id(), Name: name, BoardID: boardID, Group: &domain.Group{ID: groupID}}
 	f.mu.Lock()
 	f.Items[item.ID] = item

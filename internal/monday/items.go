@@ -389,6 +389,9 @@ func (c *Client) CreateItem(ctx context.Context, boardID, groupID, name string, 
 	if err := c.Do(ctx, createItemMutation, vars, &data); err != nil {
 		return nil, err
 	}
+	if data.Item.ID == "" {
+		return nil, fmt.Errorf("monday returned incomplete create_item response: missing item_id")
+	}
 	item := data.Item.toDomain()
 	return &item, nil
 }

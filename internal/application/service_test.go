@@ -238,3 +238,24 @@ func TestBoundLimit(t *testing.T) {
 		t.Fatal("negative must fail")
 	}
 }
+
+func TestCreateItemValidatesGroupBeforeWriting(t *testing.T) {
+	svc, port := newService(nil)
+	_, err := svc.CreateItem(ctx, "100", "missing", "x", nil)
+	var notFound *monday.NotFoundError
+	if !errors.As(err, &notFound) || notFound.Resource != "active group" {
+		t.Fatalf("err = %v, want active group not found", err)
+	}
+	if port.MutationCount() != 0 {
+		t.Fatalf("invalid group reached the port: %v", port.Mutations)
+	}
+}
+
+func TestCreateItemRejectsIncompleteProviderResponse(t *testing.T) {
+	svc, port := newService(nil)
+	port.ReturnIncompleteCreateItem = true
+	_, err := svc.CreateItem(ctx, "100", "todo", "x", nil)
+	if err == nil || !strings.Contains(err.Error(), "missing item_id") {
+		t.Fatalf("err = %v, want actionable incomplete response", err)
+	}
+}

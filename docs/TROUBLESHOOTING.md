@@ -91,3 +91,7 @@ and the response lists each row's `status` and `issues` (for example
 | `make lint` reports a broken link | A relative Markdown link points to a missing file or anchor. |
 | The Wiki sync job passes but publishes nothing | GitHub creates the wiki repository only after the first page is saved from the Wiki tab; create any page once. |
 | Bind mounts (`-v`) fail on some filesystems (e.g. 9p shares) | `make lint` and profile mounts need a working bind mount. Where that fails, copy the files into a throwaway image or container (`docker cp`) instead. |
+
+### Safe item creation
+
+`create_item` performs all local checks before the mutation: the board write policy, the optional active `group_id`, and every supplied column value. If Monday returns a payload without an item ID, the MCP reports an incomplete response instead of returning a zero-value item. For a large import, call `get_board_schema` and `validate_column_values` first, then process bounded batches and persist each returned item ID so the client can resume without guessing what was created.
