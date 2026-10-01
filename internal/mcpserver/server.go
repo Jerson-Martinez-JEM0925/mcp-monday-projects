@@ -170,6 +170,7 @@ func NewWithService(svc *application.Service, options Options) (*mcp.Server, []T
 	registerItemTools(r)
 	registerCollaborationTools(r)
 	registerReportTools(r)
+	registerQualityTools(r)
 	registerDeleteTools(r)
 	registerPrompts(server)
 	return server, r.Catalog()

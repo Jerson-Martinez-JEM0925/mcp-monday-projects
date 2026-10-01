@@ -21,7 +21,7 @@ import (
 )
 
 // expectedToolCount is the write-level catalog; full adds the delete tools.
-const expectedToolCount = 72
+const expectedToolCount = 83
 
 const expectedDeleteTools = 7
 
@@ -151,7 +151,7 @@ func TestToolCallsReachServiceAndReturnStructuredContent(t *testing.T) {
 		t.Fatalf("summary = %v", summary)
 	}
 	_, catalog := call(t, session, "list_tool_catalog", map[string]any{"category": "reports"})
-	if catalog["count"].(float64) != 10 {
+	if catalog["count"].(float64) != 14 {
 		t.Fatalf("reports catalog = %v", catalog["count"])
 	}
 }
@@ -345,7 +345,7 @@ func TestStableToolSchemas(t *testing.T) {
 	}
 	sum := sha256.Sum256(raw)
 	got := hex.EncodeToString(sum[:])
-	const expected = "2d814cd612f63421d0290f9740fc2e64523a439286b4e83bc757a81f95288e18"
+	const expected = "c5e5040153f4e1a7415b0d47270e38b4c4432ec058996d9c7fa844bf2a9546c5"
 	if got != expected {
 		t.Fatalf("stable tool schema digest changed: got %s; update intentionally with release notes", got)
 	}

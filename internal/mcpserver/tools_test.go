@@ -13,10 +13,21 @@ func TestEveryToolIsCallable(t *testing.T) {
 	yes := true
 	no := false
 	cases := map[string]map[string]any{
-		"server_info":       nil,
-		"list_tool_catalog": {"category": "bulk"},
-		"get_me":            nil,
-		"get_api_status":    nil,
+		"server_info":              nil,
+		"list_tool_catalog":        {"category": "bulk"},
+		"get_me":                   nil,
+		"get_api_status":           nil,
+		"list_items_all":           {"board_id": "100"},
+		"search_items_all":         {"board_id": "100", "text": "Seed"},
+		"get_item_context":         {"item_id": "500"},
+		"find_due_soon_items":      {"board_id": "100", "days": 7},
+		"find_unassigned_items":    {"board_id": "100"},
+		"find_blocked_items":       {"board_id": "100"},
+		"board_risk_report":        {"board_id": "100"},
+		"item_activity_summary":    {"item_id": "500"},
+		"board_activity_summary":   {"board_id": "100"},
+		"item_integration_payload": {"item_id": "500"},
+		"quality_diagnostics":      nil,
 
 		"list_workspaces":  {"limit": 5, "kind": "closed"},
 		"get_workspace":    {"workspace_id": "7"},
