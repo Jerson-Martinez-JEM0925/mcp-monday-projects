@@ -132,6 +132,36 @@ func TestListGroupItemsNotFound(t *testing.T) {
 	}
 }
 
+func TestListItemsPageRejectsMissingPagePayload(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+		reply     string
+		query     ItemPageQuery
+	}{
+		{name: "board", operation: "ListItems", reply: `{"data":{"boards":[{}]}}`, query: ItemPageQuery{BoardID: "7", Limit: 5}},
+		{name: "group", operation: "ListGroupItems", reply: `{"data":{"boards":[{"groups":[{}]}]}}`, query: ItemPageQuery{BoardID: "7", GroupID: "g", Limit: 5}},
+		{name: "cursor", operation: "next_items_page", reply: `{"data":{"next_items_page":null}}`, query: ItemPageQuery{Cursor: "abc", Limit: 5}},
+		{name: "column values", operation: "ItemsByColumnValues", reply: `{"data":{"items_page_by_column_values":null}}`, query: ItemPageQuery{BoardID: "7", Limit: 5}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, _ := newContractClient(t, tt.operation, tt.reply)
+			_, err := func() (domain.ItemPage, error) {
+				switch tt.name {
+				case "column values":
+					return client.ItemsByColumnValues(context.Background(), "7", []ColumnMatch{{ColumnID: "status", Values: []string{"Done"}}}, 5, "")
+				default:
+					return client.ListItemsPage(context.Background(), tt.query)
+				}
+			}()
+			if err == nil || !strings.Contains(err.Error(), "incomplete") {
+				t.Fatalf("err = %v, want incomplete response error", err)
+			}
+		})
+	}
+}
+
 func TestColumnSettingsAcceptObjectOrString(t *testing.T) {
 	client, _ := newContractClient(t, "ListColumns", `{"data":{"boards":[{"columns":[
 	  {"id":"a","title":"A","type":"status","settings":{"labels":[{"id":1,"label":"Done","is_done":true}]}},

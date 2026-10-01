@@ -282,10 +282,13 @@ func (c *Client) ListItems(ctx context.Context, boardID string, limit int) ([]It
 func (c *Client) ListItemsPage(ctx context.Context, query ItemPageQuery) (domain.ItemPage, error) {
 	if query.Cursor != "" {
 		var data struct {
-			Page wirePage `json:"next_items_page"`
+			Page *wirePage `json:"next_items_page"`
 		}
 		if err := c.Do(ctx, nextItemsPageQuery, map[string]any{"cursor": query.Cursor, "limit": query.Limit}, &data); err != nil {
 			return domain.ItemPage{}, err
+		}
+		if data.Page == nil {
+			return domain.ItemPage{}, fmt.Errorf("monday returned incomplete next_items_page response: missing page payload")
 		}
 		return data.Page.toDomain(), nil
 	}
@@ -295,7 +298,7 @@ func (c *Client) ListItemsPage(ctx context.Context, query ItemPageQuery) (domain
 		var data struct {
 			Boards []struct {
 				Groups []struct {
-					Page wirePage `json:"items_page"`
+					Page *wirePage `json:"items_page"`
 				} `json:"groups"`
 			} `json:"boards"`
 		}
@@ -308,11 +311,14 @@ func (c *Client) ListItemsPage(ctx context.Context, query ItemPageQuery) (domain
 		if len(data.Boards[0].Groups) == 0 {
 			return domain.ItemPage{}, &NotFoundError{Resource: "group", ID: query.GroupID}
 		}
+		if data.Boards[0].Groups[0].Page == nil {
+			return domain.ItemPage{}, fmt.Errorf("monday returned incomplete items_page response for group %q: missing page payload", query.GroupID)
+		}
 		return data.Boards[0].Groups[0].Page.toDomain(), nil
 	}
 	var data struct {
 		Boards []struct {
-			Page wirePage `json:"items_page"`
+			Page *wirePage `json:"items_page"`
 		} `json:"boards"`
 	}
 	if err := c.Do(ctx, listItemsQuery, vars, &data); err != nil {
@@ -320,6 +326,9 @@ func (c *Client) ListItemsPage(ctx context.Context, query ItemPageQuery) (domain
 	}
 	if len(data.Boards) == 0 {
 		return domain.ItemPage{}, &NotFoundError{Resource: "board", ID: query.BoardID}
+	}
+	if data.Boards[0].Page == nil {
+		return domain.ItemPage{}, fmt.Errorf("monday returned incomplete items_page response: missing page payload")
 	}
 	return data.Boards[0].Page.toDomain(), nil
 }
@@ -337,14 +346,17 @@ func (c *Client) ItemsByColumnValues(ctx context.Context, boardID string, matche
 		columns = append(columns, map[string]any{"column_id": match.ColumnID, "column_values": match.Values})
 	}
 	var data struct {
-		Page wirePage `json:"items_page_by_column_values"`
+		Page *wirePage `json:"items_page_by_column_values"`
 	}
-	vars := map[string]any{"boardID": boardID, "limit": limit, "columns": columns, "cursor": optional(cursor)}
+	var vars = map[string]any{"boardID": boardID, "limit": limit, "columns": columns, "cursor": optional(cursor)}
 	if cursor != "" {
 		vars["columns"] = nil
 	}
 	if err := c.Do(ctx, itemsByColumnValuesQuery, vars, &data); err != nil {
 		return domain.ItemPage{}, err
+	}
+	if data.Page == nil {
+		return domain.ItemPage{}, fmt.Errorf("monday returned incomplete items_page_by_column_values response: missing page payload")
 	}
 	return data.Page.toDomain(), nil
 }
