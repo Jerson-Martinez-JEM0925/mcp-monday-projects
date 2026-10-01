@@ -15,6 +15,7 @@ import (
 	"github.com/jersonmartinez/mcp-monday-projects/internal/application"
 	"github.com/jersonmartinez/mcp-monday-projects/internal/application/applicationtest"
 	"github.com/jersonmartinez/mcp-monday-projects/internal/config"
+	"github.com/jersonmartinez/mcp-monday-projects/internal/domain"
 	"github.com/jersonmartinez/mcp-monday-projects/internal/mcpserver"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -344,9 +345,49 @@ func TestStableToolSchemas(t *testing.T) {
 	}
 	sum := sha256.Sum256(raw)
 	got := hex.EncodeToString(sum[:])
-	const expected = "23ac4d046a2fb516d8d73fd9a4bfc42d0e44140ea8824794547233265198571e"
+	const expected = "2d814cd612f63421d0290f9740fc2e64523a439286b4e83bc757a81f95288e18"
 	if got != expected {
 		t.Fatalf("stable tool schema digest changed: got %s; update intentionally with release notes", got)
 	}
 	t.Logf("stable tool schema digest: %s (%d tools)", got, len(contracts))
+}
+
+func TestWritesAndReportsWarnAboutColumnsTheTokenCannotRead(t *testing.T) {
+	session, _, port := connect(t, false)
+
+	_, created := call(t, session, "create_item", map[string]any{"board_id": "100", "name": "Visible", "column_values": map[string]any{"status": "Done", "est": 3}})
+	if _, ok := created["warnings"]; ok {
+		t.Fatalf("visible columns must not warn: %v", created)
+	}
+
+	port.HiddenColumns["status"] = true
+	_, hidden := call(t, session, "create_item", map[string]any{"board_id": "100", "name": "Hidden", "column_values": map[string]any{"status": "Done", "est": 3}})
+	warnings, _ := hidden["warnings"].([]any)
+	if len(warnings) != 1 || !strings.Contains(warnings[0].(string), "status") || strings.Contains(warnings[0].(string), "est,") {
+		t.Fatalf("create_item warnings = %v", hidden)
+	}
+	_, updated := call(t, session, "update_item_column_values", map[string]any{"board_id": "100", "item_id": "500", "column_values": map[string]any{"status": "Done"}})
+	if w, _ := updated["warnings"].([]any); len(w) != 1 {
+		t.Fatalf("update warnings = %v", updated)
+	}
+	_, status := call(t, session, "set_item_status", map[string]any{"board_id": "100", "item_id": "500", "label": "Done"})
+	if w, _ := status["warnings"].([]any); len(w) != 1 || status["column_id"] != "status" {
+		t.Fatalf("set_item_status warnings = %v", status)
+	}
+
+	// Reports read stored items; hide the column from every one of them.
+	for id, item := range port.Items {
+		var visible []domain.ColumnValue
+		for _, value := range item.ColumnValues {
+			if value.ID != "status" {
+				visible = append(visible, value)
+			}
+		}
+		item.ColumnValues = visible
+		port.Items[id] = item
+	}
+	_, dist := call(t, session, "column_distribution", map[string]any{"board_id": "100", "column_id": "status"})
+	if w, _ := dist["warnings"].([]any); len(w) != 1 {
+		t.Fatalf("column_distribution warnings = %v", dist)
+	}
 }

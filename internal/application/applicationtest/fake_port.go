@@ -27,6 +27,9 @@ type FakePort struct {
 	ReturnIncompleteCreateItem bool
 	// BoardWorkspace overrides a board's workspace (default "7").
 	BoardWorkspace map[string]string
+	// HiddenColumns simulates columns the token cannot view: monday omits them
+	// from every column_values response instead of returning them empty.
+	HiddenColumns map[string]bool
 }
 
 // NewFakePort returns a fake with board "100" (group "todo") and item "500".
@@ -44,10 +47,24 @@ func NewFakePort() *FakePort {
 		nextID:         1000,
 		FailOn:         map[string]error{},
 		BoardWorkspace: map[string]string{},
+		HiddenColumns:  map[string]bool{},
 	}
-	f.Items["500"] = domain.Item{ID: "500", Name: "Seed", BoardID: "100", Group: &domain.Group{ID: "todo", Title: "To Do"}}
+	f.Items["500"] = domain.Item{ID: "500", Name: "Seed", BoardID: "100", Group: &domain.Group{ID: "todo", Title: "To Do"}, ColumnValues: f.visibleCells("100")}
 	f.Order = []string{"500"}
 	return f
+}
+
+// visibleCells returns empty cells for every column of a board the token can
+// view, like monday's column_values on a fresh item.
+func (f *FakePort) visibleCells(boardID string) []domain.ColumnValue {
+	var cells []domain.ColumnValue
+	for _, column := range f.Columns[boardID] {
+		if column.ID == "name" || f.HiddenColumns[column.ID] {
+			continue
+		}
+		cells = append(cells, domain.ColumnValue{ID: column.ID, Type: column.Type})
+	}
+	return cells
 }
 
 func (f *FakePort) record(op string) error {
@@ -244,7 +261,7 @@ func (f *FakePort) CreateItem(_ context.Context, boardID, groupID, name string, 
 	if f.ReturnIncompleteCreateItem {
 		return nil, f.record("create_item")
 	}
-	item := domain.Item{ID: f.id(), Name: name, BoardID: boardID, Group: &domain.Group{ID: groupID}}
+	item := domain.Item{ID: f.id(), Name: name, BoardID: boardID, Group: &domain.Group{ID: groupID}, ColumnValues: f.visibleCells(boardID)}
 	f.mu.Lock()
 	f.Items[item.ID] = item
 	f.Order = append(f.Order, item.ID)
@@ -258,7 +275,7 @@ func (f *FakePort) UpdateItemValues(_ context.Context, boardID, itemID string, _
 	if err := f.record("update_item_values:" + itemID); err != nil {
 		return nil, err
 	}
-	return &domain.Item{ID: itemID, BoardID: boardID}, nil
+	return &domain.Item{ID: itemID, BoardID: boardID, ColumnValues: f.visibleCells(boardID)}, nil
 }
 func (f *FakePort) MoveItem(_ context.Context, itemID, groupID string) (*domain.Item, error) {
 	return &domain.Item{ID: itemID, Group: &domain.Group{ID: groupID}}, f.record("move_item")

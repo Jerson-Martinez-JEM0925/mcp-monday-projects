@@ -60,6 +60,7 @@ type BoardSummary struct {
 	OverdueItems   int           `json:"overdue_items"`
 	UnassignedOpen int           `json:"unassigned_open_items"`
 	BlockedItems   int           `json:"blocked_items"`
+	Warnings       []string      `json:"warnings,omitempty"`
 }
 
 // DetectReportColumns picks sensible status/date/people columns.
@@ -102,6 +103,46 @@ func contains(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+// UnreadableColumns returns the requested column IDs that none of the items
+// exposes in column_values. monday omits columns the token is not allowed to
+// view (for example, columns with restricted view permissions) instead of
+// returning them empty, so an absent column must not be read as "no value".
+// The pseudo-column "name" and empty IDs are ignored; with no items the
+// visibility cannot be decided and nil is returned.
+func UnreadableColumns(items []Item, columnIDs ...string) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, item := range items {
+		for _, value := range item.ColumnValues {
+			seen[value.ID] = true
+		}
+	}
+	var missing []string
+	reported := map[string]bool{}
+	for _, id := range columnIDs {
+		if id == "" || id == "name" || seen[id] || reported[id] {
+			continue
+		}
+		reported[id] = true
+		missing = append(missing, id)
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+// UnreadableColumnsWarning explains why values of the given columns are not
+// visible to the configured token. It returns "" when ids is empty.
+func UnreadableColumnsWarning(ids []string) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("column(s) %s are not readable with the configured token: monday omits columns the user cannot view "+
+		"(e.g. restricted column permissions), so their values are unknown, not empty, and writes to them cannot be verified",
+		strings.Join(ids, ", "))
 }
 
 // CellText returns an item's display text for a column.
@@ -282,6 +323,9 @@ func Summarize(snapshot BoardSnapshot, override ReportColumns, now time.Time) Bo
 	}
 	summary.ByGroup = sortedCounts(byGroup)
 	summary.ByStatus = sortedCounts(byStatus)
+	if warning := UnreadableColumnsWarning(UnreadableColumns(snapshot.Items, cols.StatusColumnID, cols.DateColumnID, cols.PeopleColumnID)); warning != "" {
+		summary.Warnings = append(summary.Warnings, warning)
+	}
 	if summary.TotalItems > 0 {
 		summary.CompletionPct = round1(float64(summary.DoneItems) * 100 / float64(summary.TotalItems))
 	}

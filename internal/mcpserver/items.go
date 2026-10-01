@@ -70,7 +70,25 @@ type ItemIDsInput struct {
 
 // ItemOutput wraps one item.
 type ItemOutput struct {
-	Item monday.Item `json:"item"`
+	Item     monday.Item `json:"item"`
+	Warnings []string    `json:"warnings,omitempty"`
+}
+
+// writeWarnings reports written columns that the mutation response does not
+// expose, which means the token cannot read them back to verify the write.
+func writeWarnings(item monday.Item, columnIDs ...string) []string {
+	if warning := domain.UnreadableColumnsWarning(domain.UnreadableColumns([]monday.Item{item}, columnIDs...)); warning != "" {
+		return []string{warning}
+	}
+	return nil
+}
+
+func columnIDsOf(values map[string]any) []string {
+	ids := make([]string, 0, len(values))
+	for id := range values {
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 // ItemValuesInput updates column values.
@@ -134,6 +152,7 @@ type AssignPeopleInput struct {
 type ColumnWriteOutput struct {
 	Item     monday.Item `json:"item"`
 	ColumnID string      `json:"column_id"`
+	Warnings []string    `json:"warnings,omitempty"`
 }
 
 // RenameItemInput renames an item.
@@ -276,7 +295,7 @@ func registerItemTools(r *registry) {
 			if err != nil {
 				return ItemOutput{}, wrap("create item", err)
 			}
-			return ItemOutput{Item: *item}, nil
+			return ItemOutput{Item: *item, Warnings: writeWarnings(*item, columnIDsOf(in.ColumnValues)...)}, nil
 		})
 	add(r, ToolSpec{Name: "create_subitem", Category: CatItemsWrite, Title: "Create subitem",
 		Description: "Create a subitem under a parent item; values are validated against the subitems board."},
@@ -294,7 +313,7 @@ func registerItemTools(r *registry) {
 			if err != nil {
 				return ItemOutput{}, wrap("update item values", err)
 			}
-			return ItemOutput{Item: *item}, nil
+			return ItemOutput{Item: *item, Warnings: writeWarnings(*item, columnIDsOf(in.ColumnValues)...)}, nil
 		})
 	add(r, ToolSpec{Name: "set_item_status", Category: CatItemsWrite, Title: "Set item status",
 		Description: "Set a status label on an item; the status column is auto-detected and the label is validated."},
@@ -303,7 +322,7 @@ func registerItemTools(r *registry) {
 			if err != nil {
 				return ColumnWriteOutput{}, wrap("set item status", err)
 			}
-			return ColumnWriteOutput{Item: *item, ColumnID: column}, nil
+			return ColumnWriteOutput{Item: *item, ColumnID: column, Warnings: writeWarnings(*item, column)}, nil
 		})
 	add(r, ToolSpec{Name: "set_item_date", Category: CatItemsWrite, Title: "Set item date",
 		Description: "Set or clear a date on an item; the date column is auto-detected (prefers due/deadline)."},
@@ -316,7 +335,7 @@ func registerItemTools(r *registry) {
 			if err != nil {
 				return ColumnWriteOutput{}, wrap("set item date", err)
 			}
-			return ColumnWriteOutput{Item: *item, ColumnID: column}, nil
+			return ColumnWriteOutput{Item: *item, ColumnID: column, Warnings: writeWarnings(*item, column)}, nil
 		})
 	add(r, ToolSpec{Name: "assign_item_people", Category: CatItemsWrite, Title: "Assign people",
 		Description: "Assign users or teams to an item's people column (auto-detected); an empty list clears it."},
@@ -333,7 +352,7 @@ func registerItemTools(r *registry) {
 			if err != nil {
 				return ColumnWriteOutput{}, wrap("assign item people", err)
 			}
-			return ColumnWriteOutput{Item: *item, ColumnID: column}, nil
+			return ColumnWriteOutput{Item: *item, ColumnID: column, Warnings: writeWarnings(*item, column)}, nil
 		})
 	add(r, ToolSpec{Name: "rename_item", Category: CatItemsWrite, Title: "Rename item",
 		Description: "Rename an item."},
