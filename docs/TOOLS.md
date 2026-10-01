@@ -171,6 +171,26 @@ _79 tools, generated from `list_tool_catalog`._
 
 <!-- tools:end -->
 
+### Response quality and integration tools
+
+These read-only tools add bounded, automation-friendly projections without changing existing tool responses:
+
+| Tool | Purpose |
+|---|---|
+| `list_items_all` | Load a bounded board snapshot with pages, truncation, and warnings. |
+| `search_items_all` | Search visible items and report whether more results exist. |
+| `get_item_context` | Summarize status, priority, owner, due date, age, and missing signals. |
+| `find_due_soon_items` | Find work due within a configurable horizon. |
+| `find_unassigned_items` | Find visible work without an owner. |
+| `find_blocked_items` | Find statuses that indicate blocked or stuck work. |
+| `board_risk_report` | Produce a 0–100 risk score and actionable item groups. |
+| `item_activity_summary` | Aggregate update authors, replies, and latest activity. |
+| `board_activity_summary` | Aggregate the board's recent update feed for standups. |
+| `item_integration_payload` | Build a stable external key, correlation ID, and idempotency key for sync workers. |
+| `quality_diagnostics` | Check catalog metadata and effective read/write/destructive counts. |
+
+Aggregations are bounded by `max_items` and return `truncated`/`warnings` instead of implying completeness. They are read-only and safe to call from a reconciliation worker.
+
 ## Prompts
 
 | Prompt | Arguments | Purpose |
@@ -205,26 +225,6 @@ Plan a bulk update, then apply it:
 
 Provision a DevOps board with seed items:
 
-
-### Response quality and integration tools
-
-These read-only tools add bounded, automation-friendly projections without changing existing tool responses:
-
-| Tool | Purpose |
-|---|---|
-| `list_items_all` | Load a bounded board snapshot with pages, truncation, and warnings. |
-| `search_items_all` | Search visible items and report whether more results exist. |
-| `get_item_context` | Summarize status, priority, owner, due date, age, and missing signals. |
-| `find_due_soon_items` | Find work due within a configurable horizon. |
-| `find_unassigned_items` | Find visible work without an owner. |
-| `find_blocked_items` | Find statuses that indicate blocked or stuck work. |
-| `board_risk_report` | Produce a 0–100 risk score and actionable item groups. |
-| `item_activity_summary` | Aggregate update authors, replies, and latest activity. |
-| `board_activity_summary` | Aggregate the board's recent update feed for standups. |
-| `item_integration_payload` | Build a stable external key, correlation ID, and idempotency key for sync workers. |
-| `quality_diagnostics` | Check catalog metadata and effective read/write/destructive counts. |
-
-Aggregations are bounded by `max_items` and return `truncated`/`warnings` instead of implying completeness. They are read-only and safe to call from a reconciliation worker.
 ```json
 {"name": "provision_board_from_template", "arguments": {"template": "devops",
   "workspace_id": "555000111", "board_kind": "private",

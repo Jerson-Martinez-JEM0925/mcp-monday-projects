@@ -20,8 +20,9 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
-- **Response-quality and integration tools:** added bounded all-item/search views, compact item context, due-soon/unassigned/blocked reports, board risk scoring, item/board activity summaries, stable integration payloads, and catalog diagnostics. Results expose `truncated`, `warnings`, timestamps, correlation IDs, and idempotency keys where applicable.
 ### Added
+
+- **Response-quality and integration tools:** added bounded all-item/search views, compact item context, due-soon/unassigned/blocked reports, board risk scoring, item/board activity summaries, stable integration payloads, and catalog diagnostics. Results expose `truncated`, `warnings`, timestamps, correlation IDs, and idempotency keys where applicable.
 
 - **Unreadable-column warnings:** monday omits columns the token cannot view
   from `column_values`, so a restricted column looked identical to an empty
