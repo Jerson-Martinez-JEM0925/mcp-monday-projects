@@ -156,3 +156,41 @@ func TestTemplatesAndDefaults(t *testing.T) {
 		t.Fatalf("dropdown defaults = %v", dropdown)
 	}
 }
+
+func TestUnreadableColumnsDistinguishesHiddenFromEmpty(t *testing.T) {
+	items := sampleSnapshot().Items
+	// owner is empty on item 2 but present; "secret" is absent from every item.
+	got := UnreadableColumns(items, "status", "owner", "secret", "name", "", "secret")
+	if len(got) != 1 || got[0] != "secret" {
+		t.Fatalf("unreadable = %v", got)
+	}
+	if UnreadableColumns(nil, "secret") != nil {
+		t.Fatal("no items must not report unreadable columns")
+	}
+	if UnreadableColumnsWarning(nil) != "" {
+		t.Fatal("empty ids must not produce a warning")
+	}
+	if w := UnreadableColumnsWarning([]string{"a", "b"}); !strings.Contains(w, "a, b") || !strings.Contains(w, "not readable") {
+		t.Fatalf("warning = %q", w)
+	}
+}
+
+func TestSummarizeWarnsWhenStatusColumnIsHidden(t *testing.T) {
+	snap := sampleSnapshot()
+	for i := range snap.Items {
+		var visible []ColumnValue
+		for _, value := range snap.Items[i].ColumnValues {
+			if value.ID != "status" {
+				visible = append(visible, value)
+			}
+		}
+		snap.Items[i].ColumnValues = visible
+	}
+	summary := Summarize(snap, ReportColumns{}, reportNow)
+	if len(summary.Warnings) != 1 || !strings.Contains(summary.Warnings[0], "status") {
+		t.Fatalf("warnings = %v", summary.Warnings)
+	}
+	if clean := Summarize(sampleSnapshot(), ReportColumns{}, reportNow); len(clean.Warnings) != 0 {
+		t.Fatalf("unexpected warnings = %v", clean.Warnings)
+	}
+}

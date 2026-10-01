@@ -72,6 +72,32 @@ Bulk tools validate every row first; one invalid row means nothing is written
 and the response lists each row's `status` and `issues` (for example
 `"unknown status label; valid labels: \"To Do\", \"Working on it\", …"`).
 
+## A written column reads back empty or `—`
+
+monday **omits** columns the token's user cannot view (for example, columns
+with restricted view permissions) from every `column_values` response, both
+on reads and in mutation responses. Without a signal that looks exactly like
+"no value": `board_summary` shows every item as `—`, and a successful
+`set_item_status` cannot be confirmed.
+
+The server now distinguishes the two cases. When a requested column is absent
+from every returned item, the response carries a `warnings` entry:
+
+```text
+column(s) project_status are not readable with the configured token: monday omits columns
+the user cannot view (e.g. restricted column permissions), so their values are unknown,
+not empty, and writes to them cannot be verified
+```
+
+Covered tools: `create_item`, `update_item_column_values`, `set_item_status`,
+`set_item_date`, `assign_item_people`, `column_distribution` and
+`board_summary` (for the detected status, date and owner columns).
+
+Fix: grant the token's user view access to the column in monday (column
+permissions), or use a token whose user already has it. The schema
+(`get_board_schema`) still lists the column, because the board structure is
+not restricted.
+
 ## Rate limits and large boards
 
 | Symptom | Cause and fix |

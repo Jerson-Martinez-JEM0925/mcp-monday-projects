@@ -20,6 +20,16 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Unreadable-column warnings:** monday omits columns the token cannot view
+  from `column_values`, so a restricted column looked identical to an empty
+  one. `create_item`, `update_item_column_values`, `set_item_status`,
+  `set_item_date`, `assign_item_people`, `column_distribution` and
+  `board_summary` now return an optional `warnings` list naming written or
+  reported columns absent from the response. This additive output field
+  changes the stable schema digest; no input or existing field changed.
+
 ## [0.3.0] — Operational parity
 
 ### Added

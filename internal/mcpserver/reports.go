@@ -40,6 +40,7 @@ type DistributionOutput struct {
 	Total     int            `json:"total"`
 	Truncated bool           `json:"truncated"`
 	Values    []domain.Count `json:"values"`
+	Warnings  []string       `json:"warnings,omitempty"`
 }
 
 // WorkloadOutput lists per-person load.
@@ -139,7 +140,11 @@ func registerReportTools(r *registry) {
 			if err != nil {
 				return DistributionOutput{}, wrap("column distribution", err)
 			}
-			return DistributionOutput{ColumnID: in.ColumnID, Total: len(snap.Items), Truncated: snap.Truncated, Values: domain.ColumnDistribution(snap, in.ColumnID)}, nil
+			out := DistributionOutput{ColumnID: in.ColumnID, Total: len(snap.Items), Truncated: snap.Truncated, Values: domain.ColumnDistribution(snap, in.ColumnID)}
+			if warning := domain.UnreadableColumnsWarning(domain.UnreadableColumns(snap.Items, in.ColumnID)); warning != "" {
+				out.Warnings = []string{warning}
+			}
+			return out, nil
 		})
 	add(r, ToolSpec{Name: "workload_report", Category: CatReports, Title: "Workload report", ReadOnly: true,
 		Description: "Open, done, overdue, and blocked items per assignee of the owner column."},

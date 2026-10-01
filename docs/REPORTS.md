@@ -21,6 +21,11 @@ was used:
 Override with `status_column_id`, `date_column_id`, `people_column_id`.
 `get_board_schema` also returns the detected columns.
 
+If the token cannot read a detected column, monday leaves it out of the
+response. Instead of reporting every item as `—`, `board_summary` and
+`column_distribution` then add a `warnings` entry naming that column; see
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md#a-written-column-reads-back-empty-or-).
+
 **Done** comes from the status column's `is_done` label flag; boards without
 it fall back to common labels (Done, Listo, Hecho, Completado, Resolved…).
 **Blocked** matches labels containing stuck, blocked, bloque, detenido, atascado.
