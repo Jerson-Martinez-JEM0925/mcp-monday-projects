@@ -187,3 +187,46 @@ func TestLoadRejectsInvalidTransportConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadHTTPRequestAuthDoesNotRequireEnvironmentToken(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "")
+	t.Setenv("MCP_TRANSPORT", "streamable-http")
+	t.Setenv("MCP_AUTH_MODE", "request")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.APIToken != "" || cfg.AuthMode != "request" {
+		t.Fatalf("request auth config = %+v", cfg)
+	}
+}
+
+func TestLoadHTTPEnvAuthRequiresExplicitSharedToken(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "shared")
+	t.Setenv("MCP_TRANSPORT", "streamable-http")
+	t.Setenv("MCP_AUTH_MODE", "env")
+	t.Setenv("MCP_ALLOW_SHARED_TOKEN", "false")
+	if _, err := Load(); err == nil {
+		t.Fatal("Load() accepted shared HTTP auth without explicit opt-in")
+	}
+	t.Setenv("MCP_ALLOW_SHARED_TOKEN", "true")
+	cfg, err := Load()
+	if err != nil || cfg.AuthMode != "env" || !cfg.AllowSharedToken {
+		t.Fatalf("shared auth config = %+v, err=%v", cfg, err)
+	}
+}
+
+func TestLoadAuthOptions(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "shared")
+	t.Setenv("MCP_TRANSPORT", "streamable-http")
+	t.Setenv("MCP_AUTH_MODE", "request")
+	t.Setenv("MCP_CLIENT_KEY", "client-secret")
+	t.Setenv("MCP_ALLOWED_TOKEN_PREFIXES", " gh_, monday_ ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.ClientKey != "client-secret" || len(cfg.AllowedTokenPrefixes) != 2 || cfg.AllowedTokenPrefixes[1] != "monday_" {
+		t.Fatalf("auth options = %+v", cfg)
+	}
+}

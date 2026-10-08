@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,9 +20,22 @@ type Client struct {
 	httpClient       *http.Client
 	apiURL           string
 	apiToken         string
+	requestAuth      bool
 	apiVersion       string
 	maxResponseBytes int64
 	maxRetries       int
+}
+
+type requestTokenKey struct{}
+
+// WithRequestToken attaches a per-request Monday token to a context.
+func WithRequestToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, requestTokenKey{}, token)
+}
+
+func requestToken(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(requestTokenKey{}).(string)
+	return strings.TrimSpace(token), ok && strings.TrimSpace(token) != ""
 }
 
 // GraphQLRequest is the wire request sent to monday.com.
@@ -71,6 +85,7 @@ func NewClient(cfg config.Config) *Client {
 		httpClient:       &http.Client{Timeout: cfg.HTTPTimeout},
 		apiURL:           cfg.APIURL,
 		apiToken:         cfg.APIToken,
+		requestAuth:      cfg.AuthMode == "request",
 		apiVersion:       cfg.APIVersion,
 		maxResponseBytes: cfg.MaxResponseBytes,
 		maxRetries:       cfg.MaxRetries,
@@ -81,6 +96,14 @@ func NewClient(cfg config.Config) *Client {
 func (c *Client) Do(ctx context.Context, query string, variables map[string]any, output any) error {
 	if query == "" {
 		return fmt.Errorf("graphql query cannot be empty")
+	}
+	apiToken := c.apiToken
+	if c.requestAuth {
+		var ok bool
+		apiToken, ok = requestToken(ctx)
+		if !ok {
+			return errors.New("monday request requires a bearer credential")
+		}
 	}
 	payload, err := json.Marshal(GraphQLRequest{Query: query, Variables: compactVariables(variables)})
 	if err != nil {
@@ -93,7 +116,7 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 		if err != nil {
 			return fmt.Errorf("create monday request: %w", err)
 		}
-		req.Header.Set("Authorization", c.apiToken)
+		req.Header.Set("Authorization", apiToken)
 		req.Header.Set("API-Version", c.apiVersion)
 		req.Header.Set("Content-Type", "application/json")
 
@@ -102,7 +125,7 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			lastErr = fmt.Errorf("monday request failed: %w", err)
+			lastErr = fmt.Errorf("monday request failed: %s", redactToken(err.Error(), apiToken))
 			if attempt < c.maxRetries {
 				if err := waitForRetry(ctx, attempt, 0); err != nil {
 					return err
@@ -143,6 +166,7 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 		}
 		if len(envelope.Errors) > 0 {
 			reqErr := newRequestError(envelope.Errors[0])
+			reqErr.Message = redactToken(reqErr.Message, apiToken)
 			if reqErr.Temporary() && attempt < c.maxRetries {
 				lastErr = reqErr
 				if err := waitForRetry(ctx, attempt, reqErr.RetryAfter); err != nil {
@@ -153,7 +177,7 @@ func (c *Client) Do(ctx context.Context, query string, variables map[string]any,
 			return reqErr
 		}
 		if envelope.ErrorCode != "" {
-			return &RequestError{Code: envelope.ErrorCode, Message: envelope.ErrorMessage}
+			return &RequestError{Code: envelope.ErrorCode, Message: redactToken(envelope.ErrorMessage, apiToken)}
 		}
 		if output == nil {
 			return nil
@@ -209,4 +233,11 @@ func waitForRetry(ctx context.Context, attempt int, retryAfter time.Duration) er
 // Timeout returns the transport timeout for diagnostics and tests.
 func (c *Client) Timeout() time.Duration {
 	return c.httpClient.Timeout
+}
+
+func redactToken(message, token string) string {
+	if token == "" {
+		return message
+	}
+	return strings.ReplaceAll(message, token, "[REDACTED]")
 }
