@@ -33,18 +33,50 @@ make run
 The MCP server uses stdio. Its stdout is reserved for MCP JSON-RPC traffic and
 logs are written to stderr.
 
-The HTTP transport is stateless and uses the official Go SDK's
+## HTTP transport and per-user credentials
+
+The stateless Streamable HTTP transport uses the official Go SDK's
 `StreamableHTTPOptions{Stateless: true, JSONResponse: true}` handler. It exposes
 `GET /healthz` for liveness, `GET /readyz` for readiness after configuration
 loading, and the configured `MCP_HTTP_PATH` (default `/mcp`) for MCP requests.
-PR 1 authenticates those requests with the process-wide `MONDAY_API_TOKEN`; do
-not expose this mode to untrusted users or multiple tenants. PR 2 adds
-per-request bearer credentials and fail-closed authentication.
 
-Set `MCP_TRANSPORT=streamable-http` to use it. The default host is
-`127.0.0.1`; set `MCP_HTTP_HOST=0.0.0.0` explicitly when the container must
-accept traffic on its network interface. `MCP_HTTP_PORT` defaults to `8080`.
-The Compose example intentionally does not publish a host port.
+`MCP_AUTH_MODE` defaults to `env` for stdio and `request` for Streamable HTTP.
+In `request` mode, the server reads `Authorization: Bearer <token>` from every
+MCP request and keeps the credential only in that request's context. It never
+falls back to `MONDAY_API_TOKEN` or `MONDAY_API_TOKEN_ENV`. Missing, malformed,
+or disallowed-prefix tokens return `401` with `WWW-Authenticate: Bearer`.
+`MCP_CLIENT_KEY`, when set, additionally requires the matching
+`X-MCP-Client-Key` header. The optional `MCP_ALLOWED_TOKEN_PREFIXES` is a
+comma-separated list; Monday has no prefix filter by default.
+
+HTTP plus `MCP_AUTH_MODE=env` is rejected unless
+`MCP_ALLOW_SHARED_TOKEN=true`. This mode is intended only for a trusted local
+network because all requests use the process-wide `MONDAY_API_TOKEN`.
+
+The default host is `127.0.0.1`; set `MCP_HTTP_HOST=0.0.0.0` explicitly when
+the container must accept traffic on its network interface. `MCP_HTTP_PORT`
+defaults to `8080`. The Compose example intentionally does not publish a host
+port.
+
+```yaml
+mcpServers:
+  monday-governance:
+    type: streamable-http
+    url: "http://mcp-monday:8080/mcp"
+    startup: false
+    requiresOAuth: false
+    headers:
+      Authorization: "Bearer {{MONDAY_API_TOKEN}}"
+      X-MCP-Client-Key: "${MCP_MONDAY_CLIENT_KEY}"
+    customUserVars:
+      MONDAY_API_TOKEN:
+        title: "Monday.com API token"
+        sensitive: true
+```
+
+The `oauth` block for a future GitHub App or other provider flow is documented
+in PR 4. Do not put real tokens in this repository or in client configuration
+committed to source control.
 
 ## MCP client configuration
 

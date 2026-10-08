@@ -36,8 +36,13 @@ func main() {
 
 	address := fmt.Sprintf("%s:%d", cfg.HTTPHost, cfg.HTTPPort)
 	httpServer := &http.Server{
-		Addr:              address,
-		Handler:           mcpserver.NewHTTPHandler(server, cfg.HTTPPath),
+		Addr: address,
+		Handler: mcpserver.NewHTTPHandler(server, cfg.HTTPPath, mcpserver.HTTPAuthOptions{
+			Mode:                 cfg.AuthMode,
+			AllowSharedToken:     cfg.AllowSharedToken,
+			ClientKey:            cfg.ClientKey,
+			AllowedTokenPrefixes: cfg.AllowedTokenPrefixes,
+		}),
 		ReadHeaderTimeout: cfg.HTTPTimeout,
 	}
 	logger.Info("starting streamable HTTP transport", "address", address, "path", cfg.HTTPPath)

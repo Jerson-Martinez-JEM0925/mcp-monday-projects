@@ -13,17 +13,21 @@ const defaultAPIVersion = "2026-07"
 
 // Config contains validated runtime configuration for the MCP server.
 type Config struct {
-	APIToken         string
-	Transport        string
-	HTTPHost         string
-	HTTPPort         int
-	HTTPPath         string
-	APIVersion       string
-	APIURL           string
-	LogLevel         string
-	HTTPTimeout      time.Duration
-	MaxResponseBytes int64
-	MaxRetries       int
+	APIToken             string
+	Transport            string
+	HTTPHost             string
+	HTTPPort             int
+	HTTPPath             string
+	AuthMode             string
+	AllowSharedToken     bool
+	ClientKey            string
+	AllowedTokenPrefixes []string
+	APIVersion           string
+	APIURL               string
+	LogLevel             string
+	HTTPTimeout          time.Duration
+	MaxResponseBytes     int64
+	MaxRetries           int
 	// AccessLevel is read, write (default), or full. It decides which tools
 	// are registered: read hides every mutation, write exposes create/update/
 	// archive, and full also exposes permanent deletes.
@@ -61,15 +65,30 @@ func Load() (Config, error) {
 }
 
 func (env source) config() (Config, error) {
-	token, err := env.token()
-	if err != nil {
-		return Config{}, err
-	}
-
 	transport := strings.ToLower(strings.TrimSpace(env.valueOrDefault("MCP_TRANSPORT", "stdio")))
 	if transport != "stdio" && transport != "streamable-http" {
 		return Config{}, fmt.Errorf("MCP_TRANSPORT must be stdio or streamable-http")
 	}
+	authMode, err := env.parseAuthMode(transport)
+	if err != nil {
+		return Config{}, err
+	}
+	allowShared, err := env.parseBool("MCP_ALLOW_SHARED_TOKEN", false)
+	if err != nil {
+		return Config{}, err
+	}
+	if transport == "streamable-http" && authMode == "env" && !allowShared {
+		return Config{}, fmt.Errorf("streamable-http with MCP_AUTH_MODE=env requires MCP_ALLOW_SHARED_TOKEN=true")
+	}
+
+	var token string
+	if authMode == "env" {
+		token, err = env.token()
+		if err != nil {
+			return Config{}, err
+		}
+	}
+
 	host := env.valueOrDefault("MCP_HTTP_HOST", "127.0.0.1")
 	port, err := env.parseHTTPPort()
 	if err != nil {
@@ -79,6 +98,7 @@ func (env source) config() (Config, error) {
 	if !strings.HasPrefix(path, "/") || strings.ContainsAny(path, "?#") {
 		return Config{}, fmt.Errorf("MCP_HTTP_PATH must be an absolute path without query or fragment")
 	}
+	prefixes := env.parseTokenPrefixes()
 
 	apiURL := env.valueOrDefault("MONDAY_API_URL", defaultAPIURL)
 	parsed, err := url.Parse(apiURL)
@@ -134,6 +154,10 @@ func (env source) config() (Config, error) {
 		HTTPHost:                host,
 		HTTPPort:                port,
 		HTTPPath:                path,
+		AuthMode:                authMode,
+		AllowSharedToken:        allowShared,
+		ClientKey:               strings.TrimSpace(env.lookup("MCP_CLIENT_KEY")),
+		AllowedTokenPrefixes:    prefixes,
 		APIVersion:              env.valueOrDefault("MONDAY_API_VERSION", defaultAPIVersion),
 		APIURL:                  apiURL,
 		LogLevel:                logLevel,
@@ -226,4 +250,42 @@ func (env source) parseHTTPPort() (int, error) {
 		return 0, fmt.Errorf("MCP_HTTP_PORT must be between 1 and 65535")
 	}
 	return parsed, nil
+}
+
+func (env source) parseAuthMode(transport string) (string, error) {
+	fallback := "env"
+	if transport == "streamable-http" {
+		fallback = "request"
+	}
+	mode := strings.ToLower(strings.TrimSpace(env.valueOrDefault("MCP_AUTH_MODE", fallback)))
+	if mode != "env" && mode != "request" {
+		return "", fmt.Errorf("MCP_AUTH_MODE must be env or request")
+	}
+	return mode, nil
+}
+
+func (env source) parseBool(name string, fallback bool) (bool, error) {
+	value := strings.TrimSpace(env.get(name))
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("%s must be true or false", name)
+	}
+	return parsed, nil
+}
+
+func (env source) parseTokenPrefixes() []string {
+	raw := strings.TrimSpace(env.lookup("MCP_ALLOWED_TOKEN_PREFIXES"))
+	if raw == "" {
+		return nil
+	}
+	var prefixes []string
+	for _, part := range strings.Split(raw, ",") {
+		if prefix := strings.TrimSpace(part); prefix != "" {
+			prefixes = append(prefixes, prefix)
+		}
+	}
+	return prefixes
 }

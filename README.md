@@ -72,6 +72,10 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MCP_HTTP_HOST` | no | `127.0.0.1` | HTTP listen host; set explicitly to `0.0.0.0` in Docker when needed |
 | `MCP_HTTP_PORT` | no | `8080` | HTTP listen port |
 | `MCP_HTTP_PATH` | no | `/mcp` | Streamable HTTP endpoint path |
+| `MCP_AUTH_MODE` | no | `env` for stdio, `request` for HTTP | `request` reads a bearer token from every MCP request; HTTP `env` requires explicit shared-token opt-in |
+| `MCP_ALLOW_SHARED_TOKEN` | no | `false` | Required `true` only for HTTP plus `MCP_AUTH_MODE=env` |
+| `MCP_CLIENT_KEY` | no | — | Optional shared client key required as `X-MCP-Client-Key` |
+| `MCP_ALLOWED_TOKEN_PREFIXES` | no | empty | Comma-separated bearer prefixes; empty allows any Monday token |
 | `MCP_PROFILE` | no | — | Load `profiles/<name>.env`, a pinned target (token reference, workspace, access level, allowlists); see [profiles](docs/CAPABILITIES.md#profiles) |
 | `MCP_PROFILES_DIR` | no | `/profiles` in the image | Directory that holds profile files |
 | `MONDAY_API_TOKEN_ENV` | no | — | In a profile: the NAME of the variable holding that account's token (profiles never contain the token itself) |
