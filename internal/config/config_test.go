@@ -151,3 +151,39 @@ func TestLoadLogLevel(t *testing.T) {
 		t.Fatal("Load() error = nil, want MCP_LOG_LEVEL validation error")
 	}
 }
+
+func TestLoadTransportDefaults(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "test-token")
+	for name := range map[string]bool{"MCP_TRANSPORT": true, "MCP_HTTP_HOST": true, "MCP_HTTP_PORT": true, "MCP_HTTP_PATH": true} {
+		t.Setenv(name, "")
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Transport != "stdio" || cfg.HTTPHost != "127.0.0.1" || cfg.HTTPPort != 8080 || cfg.HTTPPath != "/mcp" {
+		t.Fatalf("HTTP config = %+v", cfg)
+	}
+}
+
+func TestLoadRejectsInvalidTransportConfig(t *testing.T) {
+	cases := map[string]string{
+		"MCP_TRANSPORT":   "http",
+		"MCP_HTTP_PORT":   "0",
+		"MCP_HTTP_PATH":   "mcp",
+		"MCP_HTTP_PATH_Q": "/mcp?x=1",
+	}
+	for name, value := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("MONDAY_API_TOKEN", "test-token")
+			if name == "MCP_HTTP_PATH_Q" {
+				t.Setenv("MCP_HTTP_PATH", value)
+			} else {
+				t.Setenv(name, value)
+			}
+			if _, err := Load(); err == nil {
+				t.Fatalf("Load() accepted %s=%s", name, value)
+			}
+		})
+	}
+}

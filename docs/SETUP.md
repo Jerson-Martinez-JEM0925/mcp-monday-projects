@@ -33,6 +33,19 @@ make run
 The MCP server uses stdio. Its stdout is reserved for MCP JSON-RPC traffic and
 logs are written to stderr.
 
+The HTTP transport is stateless and uses the official Go SDK's
+`StreamableHTTPOptions{Stateless: true, JSONResponse: true}` handler. It exposes
+`GET /healthz` for liveness, `GET /readyz` for readiness after configuration
+loading, and the configured `MCP_HTTP_PATH` (default `/mcp`) for MCP requests.
+PR 1 authenticates those requests with the process-wide `MONDAY_API_TOKEN`; do
+not expose this mode to untrusted users or multiple tenants. PR 2 adds
+per-request bearer credentials and fail-closed authentication.
+
+Set `MCP_TRANSPORT=streamable-http` to use it. The default host is
+`127.0.0.1`; set `MCP_HTTP_HOST=0.0.0.0` explicitly when the container must
+accept traffic on its network interface. `MCP_HTTP_PORT` defaults to `8080`.
+The Compose example intentionally does not publish a host port.
+
 ## MCP client configuration
 
 Use the published image (`ghcr.io/jersonmartinez/mcp-monday-projects:0.3.0`,
