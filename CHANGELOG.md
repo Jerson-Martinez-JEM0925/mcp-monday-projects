@@ -20,19 +20,39 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] — Governed HTTP and model-directed tools
+
 ### Added
 
-- **Response-quality and integration tools:** added bounded all-item/search views, compact item context, due-soon/unassigned/blocked reports, board risk scoring, item/board activity summaries, stable integration payloads, and catalog diagnostics. Results expose `truncated`, `warnings`, timestamps, correlation IDs, and idempotency keys where applicable.
+- **Stateless Streamable HTTP transport** with `/mcp`, `/healthz` and
+  `/readyz`, while stdio remains the default transport.
+- **Per-request bearer credentials** for HTTP requests. Credentials are
+  isolated per request, fail closed when absent, and are never copied into
+  process-global state or logs.
+- **Response-quality and integration tools:** bounded all-item/search views,
+  compact item context, due-soon/unassigned/blocked reports, board risk
+  scoring, item/board activity summaries, stable integration payloads and
+  catalog diagnostics. Results expose `truncated`, `warnings`, timestamps,
+  correlation IDs and idempotency keys where applicable.
+- **Server instructions and write-tool allowlist:** the MCP initialize result
+  tells clients to use Monday tools as the source of truth and surface
+  pagination/write safety. `MCP_SERVER_INSTRUCTIONS` replaces that text, while
+  `MCP_WRITE_TOOL_ALLOWLIST` narrows exposed non-read tools without affecting
+  reads; unknown names fail startup.
 
-- **Server instructions and write-tool allowlist:** the MCP initialize result now tells clients to use monday tools as the source of truth and to surface pagination/write safety. `MCP_SERVER_INSTRUCTIONS` replaces that text (maximum 4000 characters), while `MCP_WRITE_TOOL_ALLOWLIST` narrows exposed non-read tools without affecting reads; unknown names fail startup.
-- **Pagination audit:** reviewed cursor-based item pages, column-value pages, bounded report loading, and workspace-scoped page handling. No instance was found where `has_more` or `truncated` was derived from a post-filter item count; the existing outputs derive it from the provider cursor.
-- **Unreadable-column warnings:** monday omits columns the token cannot view
-  from `column_values`, so a restricted column looked identical to an empty
-  one. `create_item`, `update_item_column_values`, `set_item_status`,
+### Fixed
+
+- **Unreadable-column warnings:** restricted columns are now reported through
+  an optional `warnings` list instead of appearing identical to empty columns.
+  This covers `create_item`, `update_item_column_values`, `set_item_status`,
   `set_item_date`, `assign_item_people`, `column_distribution` and
-  `board_summary` now return an optional `warnings` list naming written or
-  reported columns absent from the response. This additive output field
-  changes the stable schema digest; no input or existing field changed.
+  `board_summary`.
+
+### Notes
+
+- Cursor pagination was audited across item pages, column-value pages, bounded
+  reports and workspace-scoped pages. `has_more` and `truncated` continue to
+  derive from provider cursors rather than post-filter counts.
 
 ## [0.3.0] — Operational parity
 
