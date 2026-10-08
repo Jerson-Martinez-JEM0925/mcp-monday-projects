@@ -14,6 +14,10 @@ const defaultAPIVersion = "2026-07"
 // Config contains validated runtime configuration for the MCP server.
 type Config struct {
 	APIToken         string
+	Transport        string
+	HTTPHost         string
+	HTTPPort         int
+	HTTPPath         string
 	APIVersion       string
 	APIURL           string
 	LogLevel         string
@@ -60,6 +64,20 @@ func (env source) config() (Config, error) {
 	token, err := env.token()
 	if err != nil {
 		return Config{}, err
+	}
+
+	transport := strings.ToLower(strings.TrimSpace(env.valueOrDefault("MCP_TRANSPORT", "stdio")))
+	if transport != "stdio" && transport != "streamable-http" {
+		return Config{}, fmt.Errorf("MCP_TRANSPORT must be stdio or streamable-http")
+	}
+	host := env.valueOrDefault("MCP_HTTP_HOST", "127.0.0.1")
+	port, err := env.parseHTTPPort()
+	if err != nil {
+		return Config{}, err
+	}
+	path := env.valueOrDefault("MCP_HTTP_PATH", "/mcp")
+	if !strings.HasPrefix(path, "/") || strings.ContainsAny(path, "?#") {
+		return Config{}, fmt.Errorf("MCP_HTTP_PATH must be an absolute path without query or fragment")
 	}
 
 	apiURL := env.valueOrDefault("MONDAY_API_URL", defaultAPIURL)
@@ -112,6 +130,10 @@ func (env source) config() (Config, error) {
 
 	return Config{
 		APIToken:                token,
+		Transport:               transport,
+		HTTPHost:                host,
+		HTTPPort:                port,
+		HTTPPath:                path,
 		APIVersion:              env.valueOrDefault("MONDAY_API_VERSION", defaultAPIVersion),
 		APIURL:                  apiURL,
 		LogLevel:                logLevel,
@@ -193,6 +215,15 @@ func (env source) parseInt64(name string, fallback int64) (int64, error) {
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("%s must be an integer", name)
+	}
+	return parsed, nil
+}
+
+func (env source) parseHTTPPort() (int, error) {
+	value := env.valueOrDefault("MCP_HTTP_PORT", "8080")
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 || parsed > 65535 {
+		return 0, fmt.Errorf("MCP_HTTP_PORT must be between 1 and 65535")
 	}
 	return parsed, nil
 }

@@ -16,7 +16,7 @@ A high-performance, Docker-first [Model Context Protocol](https://modelcontextpr
 - **Operational reports** — summary, workload, overdue, stale, standup, 0–100 health score, Markdown/CSV export, workspace overview. See [docs/REPORTS.md](docs/REPORTS.md).
 - **Board templates** — `provision_board_from_template` builds DevOps, incident, release, or project boards with typed columns, ordered groups, and validated seed items in one call.
 - **Self-describing** — `list_tool_catalog` returns every tool with category, capability, and read-only/destructive hints; MCP annotations are set on every tool.
-- **Hardened transport** — bounded timeouts, response limits, retries only for transient HTTP and complexity errors, typed GraphQL errors, complexity-budget diagnostics.
+- **Transportes Docker-first** — stdio remains the default; optional stateless Streamable HTTP exposes `/healthz`, `/readyz`, and `/mcp` for local integrations. HTTP in this PR still uses the process token and must not be exposed beyond a trusted local network; per-request credentials are added in PR 2.
 - **Reproducible real-account smoke suite** — see [docs/SMOKE.md](docs/SMOKE.md).
 
 ## Quick start
@@ -68,6 +68,10 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |
 | `MCP_LOG_LEVEL` | no | `info` | stderr log level: `debug`, `info`, `warn`, `error` |
+| `MCP_TRANSPORT` | no | `stdio` | `stdio` or stateless `streamable-http` |
+| `MCP_HTTP_HOST` | no | `127.0.0.1` | HTTP listen host; set explicitly to `0.0.0.0` in Docker when needed |
+| `MCP_HTTP_PORT` | no | `8080` | HTTP listen port |
+| `MCP_HTTP_PATH` | no | `/mcp` | Streamable HTTP endpoint path |
 | `MCP_PROFILE` | no | — | Load `profiles/<name>.env`, a pinned target (token reference, workspace, access level, allowlists); see [profiles](docs/CAPABILITIES.md#profiles) |
 | `MCP_PROFILES_DIR` | no | `/profiles` in the image | Directory that holds profile files |
 | `MONDAY_API_TOKEN_ENV` | no | — | In a profile: the NAME of the variable holding that account's token (profiles never contain the token itself) |
