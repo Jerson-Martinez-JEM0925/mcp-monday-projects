@@ -17,6 +17,10 @@ Set `MONDAY_API_TOKEN` to an API token created in monday.com's developer
 settings. Keep the token only in `.env` or a secret manager; `.env` is ignored
 by Git.
 
+The server includes model-facing instructions in the MCP initialize result. They make the configured monday workspace the source of truth, require tool calls for live data, and call out pagination and write-confirmation expectations. Set `MCP_SERVER_INSTRUCTIONS` to replace the built-in text; values over 4000 characters fail startup.
+
+To expose only selected mutation tools, set `MCP_WRITE_TOOL_ALLOWLIST` to a comma-separated list such as `create_item,archive_item`. Read tools remain available, while `MCP_ACCESS_LEVEL` still applies; leave it empty to preserve the full access-level catalog. Unknown tool names fail startup.
+
 `MONDAY_API_VERSION` is sent as Monday's `API-Version` HTTP header. The default
 `2026-07` is the current stable version documented by Monday at the time this
 repository was initialized. Check the [Monday API versioning

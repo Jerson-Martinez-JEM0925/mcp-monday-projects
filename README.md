@@ -12,7 +12,8 @@ A high-performance, Docker-first [Model Context Protocol](https://modelcontextpr
 - **79 typed MCP tools** (72 at the default access level, plus 7 permanent deletes at `full`) across workspaces, boards, groups, columns, items, bulk operations, users and teams, updates, tags, and reports — plus 2 reusable prompts.
 - **Validated writes** — friendly column values (`"Done"`, `"2026-10-01"`, `[user_id]`) are checked against the live board schema and converted to monday JSON before any mutation. See [docs/COLUMN_VALUES.md](docs/COLUMN_VALUES.md).
 - **Safe by construction** — archive by default, permanent deletes only at `MCP_ACCESS_LEVEL=full` with `confirm: true`, `confirm` gates on board/group archive, bulk operations capped at 50 rows with `dry_run: true` by default and all-or-nothing validation.
-- **Access levels and write policy** — `MCP_ACCESS_LEVEL=read|write|full` decides which tools exist; `MONDAY_WORKSPACE_ID` confines the server to one workspace; board and workspace allowlists fence mutations. See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
+- **Access levels and write policy** — `MCP_ACCESS_LEVEL=read|write|full` decides which tools exist; `MCP_WRITE_TOOL_ALLOWLIST` can narrow the exposed non-read tools without hiding reads; `MONDAY_WORKSPACE_ID` confines the server to one workspace; board and workspace allowlists fence mutations. See [docs/CAPABILITIES.md](docs/CAPABILITIES.md).
+- **Model-facing instructions** — the server advertises concise source-of-truth and pagination guidance to MCP clients; set `MCP_SERVER_INSTRUCTIONS` to replace it (up to 4000 characters).
 - **Operational reports** — summary, workload, overdue, stale, standup, 0–100 health score, Markdown/CSV export, workspace overview. See [docs/REPORTS.md](docs/REPORTS.md).
 - **Board templates** — `provision_board_from_template` builds DevOps, incident, release, or project boards with typed columns, ordered groups, and validated seed items in one call.
 - **Self-describing** — `list_tool_catalog` returns every tool with category, capability, and read-only/destructive hints; MCP annotations are set on every tool.
@@ -64,6 +65,8 @@ Full reference with modes and capabilities: [docs/TOOLS.md](docs/TOOLS.md).
 | `MCP_MAX_RETRIES` | no | `2` | Bounded retries for transient HTTP/complexity failures |
 | `MONDAY_WORKSPACE_ID` | no | — | Confine every read and write to this workspace ID; see [workspace scope](docs/CAPABILITIES.md#workspace-scope) |
 | `MCP_ACCESS_LEVEL` | no | `write` | `read` (read tools only), `write` (create/update/archive), or `full` (also permanent deletes); `MCP_READ_ONLY` was removed in v1.0.0 |
+| `MCP_SERVER_INSTRUCTIONS` | no | built-in | Replace the model-facing server instructions; maximum 4000 characters |
+| `MCP_WRITE_TOOL_ALLOWLIST` | no | empty | Comma-separated exact names of non-read tools to expose; empty preserves current behavior, read tools are unaffected |
 | `MONDAY_WRITE_BOARD_ALLOWLIST` | no | — | Comma-separated board IDs allowed for mutations |
 | `MONDAY_WRITE_WORKSPACE_ALLOWLIST` | no | — | Comma-separated workspace IDs allowed for board/folder creation |
 | `MCP_REPORT_MAX_ITEMS` | no | `500` | Items loaded per report (1–5000) |

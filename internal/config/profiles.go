@@ -28,7 +28,7 @@ var profileName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 // profileKeys lists the variables a profile file may set.
 var profileKeys = map[string]bool{
 	"MONDAY_API_TOKEN_ENV": true, "MONDAY_API_VERSION": true, "MONDAY_API_URL": true,
-	"MCP_ACCESS_LEVEL": true, "MONDAY_WORKSPACE_ID": true,
+	"MCP_ACCESS_LEVEL": true, "MCP_SERVER_INSTRUCTIONS": true, "MCP_WRITE_TOOL_ALLOWLIST": true, "MONDAY_WORKSPACE_ID": true,
 	"MONDAY_WRITE_BOARD_ALLOWLIST": true, "MONDAY_WRITE_WORKSPACE_ALLOWLIST": true,
 	"MCP_REPORT_MAX_ITEMS": true, "MCP_HTTP_TIMEOUT": true, "MCP_MAX_RESPONSE_BYTES": true,
 	"MCP_MAX_RETRIES": true, "MCP_LOG_LEVEL": true,

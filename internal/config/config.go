@@ -34,6 +34,10 @@ type Config struct {
 	AccessLevel string
 	// ReadOnly is true at AccessLevel=read (mutation tools are not registered).
 	ReadOnly bool
+	// ServerInstructions replaces the built-in MCP server instructions when set.
+	ServerInstructions string
+	// WriteToolAllowlist restricts registered non-read tools by exact name when set.
+	WriteToolAllowlist []string
 	// WriteBoardAllowlist restricts mutations to these board IDs when set.
 	WriteBoardAllowlist []string
 	// WriteWorkspaceAllowlist restricts board/folder creation to these workspaces.
@@ -123,6 +127,14 @@ func (env source) config() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	serverInstructions := strings.TrimSpace(env.get("MCP_SERVER_INSTRUCTIONS"))
+	if len(serverInstructions) > maxServerInstructions {
+		return Config{}, fmt.Errorf("MCP_SERVER_INSTRUCTIONS must be at most %d characters", maxServerInstructions)
+	}
+	writeToolAllowlist, err := env.parseToolList("MCP_WRITE_TOOL_ALLOWLIST")
+	if err != nil {
+		return Config{}, err
+	}
 	boards, err := env.parseIDList("MONDAY_WRITE_BOARD_ALLOWLIST")
 	if err != nil {
 		return Config{}, err
@@ -166,6 +178,8 @@ func (env source) config() (Config, error) {
 		MaxRetries:              int(retries),
 		AccessLevel:             level,
 		ReadOnly:                level == AccessRead,
+		ServerInstructions:      serverInstructions,
+		WriteToolAllowlist:      writeToolAllowlist,
 		WriteBoardAllowlist:     boards,
 		WriteWorkspaceAllowlist: workspaces,
 		WorkspaceID:             workspaceID,
@@ -179,6 +193,8 @@ const (
 	AccessWrite = "write"
 	AccessFull  = "full"
 )
+
+const maxServerInstructions = 4000
 
 // parseAccessLevel reads the stable MCP_ACCESS_LEVEL contract.
 // MCP_READ_ONLY was removed before v1.0.0; keeping one source of truth avoids
@@ -196,6 +212,29 @@ func (env source) parseAccessLevel() (string, error) {
 	default:
 		return "", fmt.Errorf("MCP_ACCESS_LEVEL must be read, write, or full")
 	}
+}
+
+func (env source) parseToolList(name string) ([]string, error) {
+	raw := strings.TrimSpace(env.get(name))
+	if raw == "" {
+		return nil, nil
+	}
+	var tools []string
+	seen := map[string]bool{}
+	for _, part := range strings.Split(raw, ",") {
+		tool := strings.TrimSpace(part)
+		if tool == "" {
+			continue
+		}
+		if strings.ContainsAny(tool, " \t\r\n") {
+			return nil, fmt.Errorf("%s must be a comma-separated list of tool names", name)
+		}
+		if !seen[tool] {
+			tools = append(tools, tool)
+			seen[tool] = true
+		}
+	}
+	return tools, nil
 }
 
 func (env source) parseIDList(name string) ([]string, error) {

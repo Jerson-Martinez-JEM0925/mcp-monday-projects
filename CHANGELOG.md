@@ -24,6 +24,8 @@ All notable changes are documented here. The format follows
 
 - **Response-quality and integration tools:** added bounded all-item/search views, compact item context, due-soon/unassigned/blocked reports, board risk scoring, item/board activity summaries, stable integration payloads, and catalog diagnostics. Results expose `truncated`, `warnings`, timestamps, correlation IDs, and idempotency keys where applicable.
 
+- **Server instructions and write-tool allowlist:** the MCP initialize result now tells clients to use monday tools as the source of truth and to surface pagination/write safety. `MCP_SERVER_INSTRUCTIONS` replaces that text (maximum 4000 characters), while `MCP_WRITE_TOOL_ALLOWLIST` narrows exposed non-read tools without affecting reads; unknown names fail startup.
+- **Pagination audit:** reviewed cursor-based item pages, column-value pages, bounded report loading, and workspace-scoped page handling. No instance was found where `has_more` or `truncated` was derived from a post-filter item count; the existing outputs derive it from the provider cursor.
 - **Unreadable-column warnings:** monday omits columns the token cannot view
   from `column_values`, so a restricted column looked identical to an empty
   one. `create_item`, `update_item_column_values`, `set_item_status`,

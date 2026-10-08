@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	"github.com/jersonmartinez/mcp-monday-projects/internal/application"
@@ -42,23 +43,32 @@ const (
 var CategoryOrder = []string{CatDiagnostics, CatWorkspaces, CatBoards, CatGroups, CatColumns, CatItemsRead, CatItemsWrite, CatBulk, CatPeople, CatCollab, CatTags, CatReports, CatDeletes}
 
 type registry struct {
-	server   *mcp.Server
-	svc      *application.Service
-	readOnly bool
-	full     bool
-	specs    []ToolSpec
-	skipped  []ToolSpec
+	server             *mcp.Server
+	svc                *application.Service
+	readOnly           bool
+	full               bool
+	specs              []ToolSpec
+	skipped            []ToolSpec
+	known              map[string]ToolSpec
+	writeToolAllowlist map[string]bool
 }
 
 func boolPtr(value bool) *bool { return &value }
 
-// add registers a typed tool. Mutating tools are skipped at access level read
-// and permanent deletes below access level full, so clients never see them.
+// add registers a typed tool. Mutating tools are skipped at access level read,
+// when absent from a non-empty write allowlist, and permanent deletes below
+// access level full, so clients never see them.
 func add[In, Out any](r *registry, spec ToolSpec, fn func(context.Context, In) (Out, error)) {
 	if spec.Capability == "" {
 		spec.Capability = defaultCapability(spec)
 	}
-	if (!spec.ReadOnly && r.readOnly) || (spec.Permanent && !r.full) {
+	if r.known == nil {
+		r.known = map[string]ToolSpec{}
+	}
+	r.known[spec.Name] = spec
+	if (!spec.ReadOnly && r.readOnly) ||
+		(!spec.ReadOnly && len(r.writeToolAllowlist) > 0 && !r.writeToolAllowlist[spec.Name]) ||
+		(spec.Permanent && !r.full) {
 		r.skipped = append(r.skipped, spec)
 		return
 	}
@@ -97,6 +107,15 @@ func defaultCapability(spec ToolSpec) string {
 		return "account.read"
 	}
 	return spec.Category + suffix
+}
+
+func (r *registry) validateWriteToolAllowlist() error {
+	for name := range r.writeToolAllowlist {
+		if _, ok := r.known[name]; !ok {
+			return fmt.Errorf("MCP_WRITE_TOOL_ALLOWLIST contains unknown tool %q", name)
+		}
+	}
+	return nil
 }
 
 // Catalog returns the registered tool specs sorted by category then name.

@@ -36,6 +36,11 @@ error so an old deployment cannot silently select a different policy.
 | `write` (default) | + 33 write tools: create, update, move, archive, bulk | Day-to-day work; archived objects can be restored from monday at any time |
 | `full` | + 7 permanent deletes (`delete_*`) | Cleanup and maintenance by a trusted operator |
 
+### Model-facing instructions and write-tool allowlist
+
+The server advertises built-in instructions in the MCP initialize result. They tell clients to use tools as the source of truth, follow pagination metadata, cite returned IDs/URLs, prefer reads, and confirm the requested change before writing. `MCP_SERVER_INSTRUCTIONS` replaces the complete built-in text when non-empty and is limited to 4000 characters; it is not appended to the defaults.
+
+`MCP_WRITE_TOOL_ALLOWLIST` is an optional comma-separated list of exact tool names. When non-empty, only listed tools in the non-read tier are registered; read tools remain registered, and `MCP_ACCESS_LEVEL` still gates writes first (`read` hides all writes and `full` is required for permanent deletes). Empty or unset preserves the current catalog. Unknown names fail startup with the offending name, so typos cannot silently reduce or widen the intended surface.
 Permanent deletes (`internal/application/deletes.go`):
 
 - Exist only at `full`, carry `destructiveHint: true`, and are listed in
@@ -73,7 +78,7 @@ docker run --rm -i --env-file .env \
 |---|---|
 | Precedence | Keys set in the profile win over the environment, so a stray variable cannot widen a pinned target; keys the profile omits fall back to the environment and then to defaults. |
 | Tokens | Never in the file: `MONDAY_API_TOKEN` is rejected. `MONDAY_API_TOKEN_ENV=MONDAY_TOKEN_DEVOPS` names the variable that holds this account's token; without it `MONDAY_API_TOKEN` is used. |
-| Allowed keys | `MONDAY_API_TOKEN_ENV`, `MONDAY_WORKSPACE_ID`, `MCP_ACCESS_LEVEL`, the two write allowlists, `MCP_REPORT_MAX_ITEMS`, `MONDAY_API_VERSION`, `MONDAY_API_URL`, and the runtime limits. Any other key fails at startup. |
+| Allowed keys | `MONDAY_API_TOKEN_ENV`, `MONDAY_WORKSPACE_ID`, `MCP_ACCESS_LEVEL`, `MCP_SERVER_INSTRUCTIONS`, `MCP_WRITE_TOOL_ALLOWLIST`, the two write allowlists, `MCP_REPORT_MAX_ITEMS`, `MONDAY_API_VERSION`, `MONDAY_API_URL`, and the runtime limits. Any other key fails at startup. |
 | Location | `MCP_PROFILES_DIR` (default `/profiles` in the image, `profiles` otherwise). Names are lowercase `a-z 0-9 - _`. |
 | Visibility | `server_info.profile` reports the active profile; the token is never returned. |
 

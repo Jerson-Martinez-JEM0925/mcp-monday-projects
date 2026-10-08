@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -75,6 +76,30 @@ func TestLoadRejectsInvalidWritePolicy(t *testing.T) {
 				t.Fatalf("Load() accepted %s=%s", name, value)
 			}
 		})
+	}
+}
+
+func TestLoadServerInstructionsAndWriteToolAllowlist(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "test-token")
+	t.Setenv("MCP_SERVER_INSTRUCTIONS", " custom instructions ")
+	t.Setenv("MCP_WRITE_TOOL_ALLOWLIST", " create_item, archive_item, create_item ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ServerInstructions != "custom instructions" {
+		t.Fatalf("ServerInstructions = %q", cfg.ServerInstructions)
+	}
+	if len(cfg.WriteToolAllowlist) != 2 || cfg.WriteToolAllowlist[0] != "create_item" || cfg.WriteToolAllowlist[1] != "archive_item" {
+		t.Fatalf("WriteToolAllowlist = %v", cfg.WriteToolAllowlist)
+	}
+}
+
+func TestLoadRejectsOversizedServerInstructions(t *testing.T) {
+	t.Setenv("MONDAY_API_TOKEN", "test-token")
+	t.Setenv("MCP_SERVER_INSTRUCTIONS", strings.Repeat("x", maxServerInstructions+1))
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "MCP_SERVER_INSTRUCTIONS") {
+		t.Fatalf("Load() error = %v, want instruction length error", err)
 	}
 }
 
