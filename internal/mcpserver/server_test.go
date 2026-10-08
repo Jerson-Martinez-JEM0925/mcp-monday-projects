@@ -38,7 +38,10 @@ func connectLevel(t *testing.T, level string) (*mcp.ClientSession, []mcpserver.T
 	port := applicationtest.NewFakePort()
 	guard := application.NewWriteGuard(level == config.AccessRead, nil, nil)
 	svc := application.NewService(port, application.Options{Guard: guard, AllowDelete: level == config.AccessFull, Now: func() time.Time { return time.Date(2026, 9, 26, 0, 0, 0, 0, time.UTC) }})
-	server, catalog := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", AccessLevel: level, ReportMaxItems: 500})
+	server, catalog, err := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", AccessLevel: level, ReportMaxItems: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
@@ -109,6 +112,84 @@ func TestServerRegistersFullCatalogWithAnnotations(t *testing.T) {
 		if !specs[name].Destructive {
 			t.Errorf("%s must be flagged destructive", name)
 		}
+	}
+}
+
+func TestServerInstructionsDefaultAndOverride(t *testing.T) {
+	session, _, _ := connect(t, false)
+	defaultText := session.InitializeResult().Instructions
+	for _, want := range []string{"source of truth", "ALWAYS call tools", "never answer from memory", "cursor/has_more", "Before any write"} {
+		if !strings.Contains(defaultText, want) {
+			t.Errorf("default instructions missing %q: %q", want, defaultText)
+		}
+	}
+
+	port := applicationtest.NewFakePort()
+	svc := application.NewService(port, application.Options{})
+	server, _, err := mcpserver.NewWithService(svc, mcpserver.Options{ServerInstructions: "Use only the named tool."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(context.Background(), serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	override, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(context.Background(), clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = override.Close() })
+	if got := override.InitializeResult().Instructions; got != "Use only the named tool." {
+		t.Fatalf("override instructions = %q", got)
+	}
+}
+
+func TestWriteToolAllowlistKeepsReadsAndOnlyListedWrites(t *testing.T) {
+	port := applicationtest.NewFakePort()
+	svc := application.NewService(port, application.Options{})
+	server, catalog, err := mcpserver.NewWithService(svc, mcpserver.Options{
+		AccessLevel: config.AccessWrite, WriteToolAllowlist: []string{"create_item", "archive_item"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, spec := range catalog {
+		seen[spec.Name] = true
+		if !spec.ReadOnly && spec.Name != "create_item" && spec.Name != "archive_item" {
+			t.Errorf("unexpected write tool %q", spec.Name)
+		}
+	}
+	if !seen["list_items"] || !seen["board_summary"] || !seen["create_item"] || !seen["archive_item"] {
+		t.Fatalf("catalog missing read or allowlisted tools: %v", seen)
+	}
+	if seen["update_item_column_values"] || seen["delete_item"] {
+		t.Fatalf("unlisted tool exposed: %v", seen)
+	}
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	if _, err := server.Connect(context.Background(), serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	session, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "1"}, nil).Connect(context.Background(), clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	tools, err := session.ListTools(context.Background(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tools.Tools) != len(catalog) {
+		t.Fatalf("protocol tools = %d, catalog = %d", len(tools.Tools), len(catalog))
+	}
+}
+
+func TestWriteToolAllowlistRejectsUnknownNames(t *testing.T) {
+	port := applicationtest.NewFakePort()
+	svc := application.NewService(port, application.Options{})
+	_, _, err := mcpserver.NewWithService(svc, mcpserver.Options{WriteToolAllowlist: []string{"typo_tool"}})
+	if err == nil || !strings.Contains(err.Error(), "MCP_WRITE_TOOL_ALLOWLIST") || !strings.Contains(err.Error(), "typo_tool") {
+		t.Fatalf("error = %v, want unknown tool name", err)
 	}
 }
 
@@ -198,7 +279,10 @@ func TestEveryToolIsDocumented(t *testing.T) {
 }
 
 func TestNewFromConfigBuildsServer(t *testing.T) {
-	server := mcpserver.New(config.Config{APIToken: "t", APIURL: "https://example.invalid", APIVersion: "2026-07", HTTPTimeout: time.Second, MaxResponseBytes: 4096, ReadOnly: true})
+	server, err := mcpserver.New(config.Config{APIToken: "t", APIURL: "https://example.invalid", APIVersion: "2026-07", HTTPTimeout: time.Second, MaxResponseBytes: 4096, ReadOnly: true})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if server == nil {
 		t.Fatal("New() returned nil")
 	}
@@ -209,7 +293,10 @@ func TestWorkspaceScopeIsReportedAndEnforced(t *testing.T) {
 	port.Columns["200"] = port.Columns["100"]
 	port.BoardWorkspace["200"] = "8"
 	svc := application.NewService(port, application.Options{WorkspaceScope: "7"})
-	server, _ := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", ReportMaxItems: 500})
+	server, _, err := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", ReportMaxItems: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
@@ -305,7 +392,10 @@ func TestReadAndWriteLevelsHideDeletes(t *testing.T) {
 func TestServerInfoReportsProfile(t *testing.T) {
 	port := applicationtest.NewFakePort()
 	svc := application.NewService(port, application.Options{})
-	server, _ := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", Profile: "devops"})
+	server, _, err := mcpserver.NewWithService(svc, mcpserver.Options{APIVersion: "2026-07", Profile: "devops"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	if _, err := server.Connect(context.Background(), serverTransport, nil); err != nil {
 		t.Fatal(err)

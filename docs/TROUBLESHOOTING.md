@@ -14,6 +14,8 @@ The process exits at startup with `ERROR invalid configuration error="…"`:
 | `MONDAY_API_TOKEN_ENV=X but that environment variable is empty` | The profile points to a token variable that is not set in the container environment. |
 | `MONDAY_WORKSPACE_ID must be a single numeric workspace ID (names are not unique in monday)` | Use the ID, not the name: `list_workspaces` shows it (e.g. `14216815`). |
 | `MCP_ACCESS_LEVEL must be read, write, or full` | Fix the value; the default is `write`. |
+| `MCP_SERVER_INSTRUCTIONS must be at most 4000 characters` | Shorten the override, or unset it to use the built-in instructions. |
+| `MCP_WRITE_TOOL_ALLOWLIST contains unknown tool` | Correct the exact tool name; `list_tool_catalog` shows registered names, but the server must start with an empty allowlist before that tool can be queried. |
 | `MCP_READ_ONLY=true contradicts MCP_ACCESS_LEVEL=…` | `MCP_READ_ONLY` is a deprecated alias; remove it and keep `MCP_ACCESS_LEVEL`. |
 | `MCP_PROFILE must be a lowercase name …` / unknown key in a profile | Profile names are `a-z0-9-_`; profile files accept only the keys listed in [CAPABILITIES.md](CAPABILITIES.md#profiles) and never the token itself. |
 | `MONDAY_API_URL must be a valid HTTPS URL` | Only HTTPS endpoints are accepted. |

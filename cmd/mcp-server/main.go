@@ -25,7 +25,11 @@ func main() {
 	_ = level.UnmarshalText([]byte(cfg.LogLevel))
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
 	logger.Info("starting mcp-monday-projects", "api_version", cfg.APIVersion, "profile", cfg.Profile, "access_level", cfg.AccessLevel)
-	server := mcpserver.New(cfg)
+	server, err := mcpserver.New(cfg)
+	if err != nil {
+		logger.Error("invalid server configuration", "error", err)
+		os.Exit(1)
+	}
 	if cfg.Transport == "stdio" {
 		if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			logger.Error("MCP server stopped", "error", err)

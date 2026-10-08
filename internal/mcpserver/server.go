@@ -52,9 +52,13 @@ type Options struct {
 	// Profile is the active MCP_PROFILE name, reported by server_info.
 	Profile string
 	// AccessLevel is read, write, or full; empty derives it from ReadOnly.
-	AccessLevel    string
-	ReadOnly       bool
-	ReportMaxItems int
+	AccessLevel string
+	ReadOnly    bool
+	// ServerInstructions replaces the built-in instructions when non-empty.
+	ServerInstructions string
+	// WriteToolAllowlist restricts registered non-read tools by exact name.
+	WriteToolAllowlist []string
+	ReportMaxItems     int
 }
 
 // level resolves the effective access level.
@@ -68,9 +72,12 @@ func (o Options) level() string {
 	return config.AccessWrite
 }
 
-const baseInstructions = "Tools for monday.com workspaces, boards, items, people, updates, and reports. " +
-	"Read tools are safe. Write tools validate column values against the board schema before calling monday, " +
-	"bulk tools default to dry_run=true, and destructive operations archive instead of delete."
+const baseInstructions = `This server is the source of truth for the configured monday.com workspace and boards.
+ALWAYS call tools for items, boards, groups, statuses, owners, and updates; never answer from memory or invent data.
+When a list may be partial, follow cursor/has_more fields and say when results are truncated.
+Cite item IDs and URLs returned by tools when they are relevant.
+Prefer read tools first. Before any write, describe the change and only perform it when the user asked.
+If a tool is missing or fails, say so instead of guessing.`
 
 // accessNotes explains the effective access level to the client.
 var accessNotes = map[string]string{
@@ -81,7 +88,10 @@ var accessNotes = map[string]string{
 }
 
 // instructions tells the client the access level and how to pick a workspace.
-func instructions(level, scope string) string {
+func instructions(level, scope, custom string) string {
+	if custom != "" {
+		return custom
+	}
 	return baseInstructions + accessNotes[level] + workspaceNote(scope)
 }
 
@@ -96,24 +106,31 @@ func workspaceNote(scope string) string {
 }
 
 // New creates the MCP server from configuration and registers every tool.
-func New(cfg config.Config) *mcp.Server {
+func New(cfg config.Config) (*mcp.Server, error) {
 	client := monday.NewClient(cfg)
 	guard := application.NewWriteGuard(cfg.ReadOnly, cfg.WriteBoardAllowlist, cfg.WriteWorkspaceAllowlist)
 	svc := application.NewService(client, application.Options{
 		Guard: guard, ReportMaxItems: cfg.ReportMaxItems, WorkspaceScope: cfg.WorkspaceID,
 		AllowDelete: cfg.AccessLevel == config.AccessFull,
 	})
-	server, _ := NewWithService(svc, Options{APIVersion: cfg.APIVersion, Profile: cfg.Profile, AccessLevel: cfg.AccessLevel, ReadOnly: cfg.ReadOnly, ReportMaxItems: cfg.ReportMaxItems})
-	return server
+	server, _, err := NewWithService(svc, Options{
+		APIVersion: cfg.APIVersion, Profile: cfg.Profile, AccessLevel: cfg.AccessLevel, ReadOnly: cfg.ReadOnly,
+		ServerInstructions: cfg.ServerInstructions, WriteToolAllowlist: cfg.WriteToolAllowlist, ReportMaxItems: cfg.ReportMaxItems,
+	})
+	return server, err
 }
 
 // NewWithService builds the server around a service and returns its catalog.
-func NewWithService(svc *application.Service, options Options) (*mcp.Server, []ToolSpec) {
+func NewWithService(svc *application.Service, options Options) (*mcp.Server, []ToolSpec, error) {
 	server := mcp.NewServer(&mcp.Implementation{Name: "mcp-monday-projects", Title: "monday.com MCP", Version: Version}, &mcp.ServerOptions{
-		Instructions: instructions(options.level(), svc.WorkspaceScope()),
+		Instructions: instructions(options.level(), svc.WorkspaceScope(), options.ServerInstructions),
 	})
 	level := options.level()
-	r := &registry{server: server, svc: svc, readOnly: level == config.AccessRead, full: level == config.AccessFull}
+	allowlist := make(map[string]bool, len(options.WriteToolAllowlist))
+	for _, name := range options.WriteToolAllowlist {
+		allowlist[name] = true
+	}
+	r := &registry{server: server, svc: svc, readOnly: level == config.AccessRead, full: level == config.AccessFull, writeToolAllowlist: allowlist}
 
 	add(r, ToolSpec{Name: "server_info", Category: CatDiagnostics, Title: "Server info", ReadOnly: true,
 		Description: "Return safe server metadata: version, runtime, API version, tool count, the active profile (MCP_PROFILE), the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name."},
@@ -173,7 +190,10 @@ func NewWithService(svc *application.Service, options Options) (*mcp.Server, []T
 	registerQualityTools(r)
 	registerDeleteTools(r)
 	registerPrompts(server)
-	return server, r.Catalog()
+	if err := r.validateWriteToolAllowlist(); err != nil {
+		return nil, nil, err
+	}
+	return server, r.Catalog(), nil
 }
 
 // CatalogInput filters the tool catalog.
