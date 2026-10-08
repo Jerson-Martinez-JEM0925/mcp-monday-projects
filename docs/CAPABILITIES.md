@@ -36,7 +36,6 @@ error so an old deployment cannot silently select a different policy.
 | `write` (default) | + 33 write tools: create, update, move, archive, bulk | Day-to-day work; archived objects can be restored from monday at any time |
 | `full` | + 7 permanent deletes (`delete_*`) | Cleanup and maintenance by a trusted operator |
 
-
 ### Model-facing instructions and write-tool allowlist
 
 The server advertises built-in instructions in the MCP initialize result. They tell clients to use tools as the source of truth, follow pagination metadata, cite returned IDs/URLs, prefer reads, and confirm the requested change before writing. `MCP_SERVER_INSTRUCTIONS` replaces the complete built-in text when non-empty and is limited to 4000 characters; it is not appended to the defaults.
