@@ -388,6 +388,13 @@ func (c *Client) GetItem(ctx context.Context, id string) (*Item, error) {
 	return &items[0], nil
 }
 
+func validateMutationItem(item wireItem, operation string) error {
+	if item.ID == "" {
+		return fmt.Errorf("monday returned incomplete %s response: missing item_id", operation)
+	}
+	return nil
+}
+
 // CreateItem creates an item. values must already be monday-ready.
 func (c *Client) CreateItem(ctx context.Context, boardID, groupID, name string, values map[string]any) (*Item, error) {
 	encoded, err := encodeJSONArg(values)
@@ -401,8 +408,8 @@ func (c *Client) CreateItem(ctx context.Context, boardID, groupID, name string, 
 	if err := c.Do(ctx, createItemMutation, vars, &data); err != nil {
 		return nil, err
 	}
-	if data.Item.ID == "" {
-		return nil, fmt.Errorf("monday returned incomplete create_item response: missing item_id")
+	if err := validateMutationItem(data.Item, "create_item"); err != nil {
+		return nil, err
 	}
 	item := data.Item.toDomain()
 	return &item, nil
@@ -419,6 +426,9 @@ func (c *Client) CreateSubitem(ctx context.Context, parentID, name string, value
 	}
 	vars := map[string]any{"parentID": parentID, "itemName": name, "columnValues": encoded, "createLabels": false}
 	if err := c.Do(ctx, createSubitemMutation, vars, &data); err != nil {
+		return nil, err
+	}
+	if err := validateMutationItem(data.Item, "create_subitem"); err != nil {
 		return nil, err
 	}
 	item := data.Item.toDomain()
@@ -438,6 +448,9 @@ func (c *Client) UpdateItemValues(ctx context.Context, boardID, itemID string, v
 	if err := c.Do(ctx, updateItemValuesMutation, vars, &data); err != nil {
 		return nil, err
 	}
+	if err := validateMutationItem(data.Item, "change_multiple_column_values"); err != nil {
+		return nil, err
+	}
 	item := data.Item.toDomain()
 	return &item, nil
 }
@@ -448,6 +461,9 @@ func (c *Client) MoveItem(ctx context.Context, itemID, groupID string) (*Item, e
 		Item wireItem `json:"move_item_to_group"`
 	}
 	if err := c.Do(ctx, moveItemMutation, map[string]any{"itemID": itemID, "groupID": groupID}, &data); err != nil {
+		return nil, err
+	}
+	if err := validateMutationItem(data.Item, "move_item_to_group"); err != nil {
 		return nil, err
 	}
 	item := data.Item.toDomain()
@@ -462,6 +478,9 @@ func (c *Client) MoveItemToBoard(ctx context.Context, itemID, boardID, groupID s
 	if err := c.Do(ctx, moveItemToBoardMutation, map[string]any{"itemID": itemID, "boardID": boardID, "groupID": groupID}, &data); err != nil {
 		return nil, err
 	}
+	if err := validateMutationItem(data.Item, "move_item_to_board"); err != nil {
+		return nil, err
+	}
 	item := data.Item.toDomain()
 	return &item, nil
 }
@@ -474,6 +493,9 @@ func (c *Client) DuplicateItem(ctx context.Context, boardID, itemID string, with
 	if err := c.Do(ctx, duplicateItemMutation, map[string]any{"boardID": boardID, "itemID": itemID, "withUpdates": withUpdates}, &data); err != nil {
 		return nil, err
 	}
+	if err := validateMutationItem(data.Item, "duplicate_item"); err != nil {
+		return nil, err
+	}
 	item := data.Item.toDomain()
 	return &item, nil
 }
@@ -484,6 +506,9 @@ func (c *Client) ArchiveItem(ctx context.Context, itemID string) (*Item, error) 
 		Item wireItem `json:"archive_item"`
 	}
 	if err := c.Do(ctx, archiveItemMutation, map[string]any{"itemID": itemID}, &data); err != nil {
+		return nil, err
+	}
+	if err := validateMutationItem(data.Item, "archive_item"); err != nil {
 		return nil, err
 	}
 	item := data.Item.toDomain()

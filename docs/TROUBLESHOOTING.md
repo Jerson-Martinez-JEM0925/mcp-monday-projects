@@ -123,3 +123,15 @@ not restricted.
 ### Safe item creation
 
 `create_item` performs all local checks before the mutation: the board write policy, the optional active `group_id`, and every supplied column value. If Monday returns a payload without an item ID, the MCP reports an incomplete response instead of returning a zero-value item. Paginated item reads apply the same rule: a missing `items_page` payload is an error, while a present page with zero items is a valid empty page. For a large import, call `get_board_schema` and `validate_column_values` first, follow every returned cursor until `has_more` is false, then process bounded batches and persist each returned item ID so the client can resume without guessing what was created.
+
+
+### Incomplete item mutation response
+
+Every item mutation that returns an item must include `item_id` in the provider
+payload. If Monday returns a successful GraphQL envelope without that ID, the
+MCP returns an incomplete-response error instead of a zero-value item.
+
+Do not retry the mutation blindly. First reconcile with `get_item` or the
+relevant board/item listing, then retry only if the original mutation was not
+applied. This protects `update_item_column_values`, `create_item`, subitems,
+move, duplicate and archive operations from duplicate or untraceable writes.
