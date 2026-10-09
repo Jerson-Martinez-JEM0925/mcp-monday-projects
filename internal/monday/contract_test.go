@@ -300,7 +300,6 @@ func TestCreateItemRejectsIncompleteResponse(t *testing.T) {
 	}
 }
 
-
 func TestItemMutationsRejectIncompleteResponses(t *testing.T) {
 	tests := []struct {
 		name  string
