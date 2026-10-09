@@ -299,3 +299,75 @@ func TestCreateItemRejectsIncompleteResponse(t *testing.T) {
 		t.Fatalf("err = %v, want incomplete response error", err)
 	}
 }
+
+func TestItemMutationsRejectIncompleteResponses(t *testing.T) {
+	tests := []struct {
+		name  string
+		op    string
+		reply string
+		call  func(*Client) error
+	}{
+		{
+			name:  "create subitem",
+			op:    "CreateSubitem",
+			reply: `{"data":{"create_subitem":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.CreateSubitem(context.Background(), "11", "Child", nil)
+				return err
+			},
+		},
+		{
+			name:  "update values",
+			op:    "UpdateItemValues",
+			reply: `{"data":{"change_multiple_column_values":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.UpdateItemValues(context.Background(), "7", "11", map[string]any{"status": "Done"})
+				return err
+			},
+		},
+		{
+			name:  "move item",
+			op:    "MoveItem",
+			reply: `{"data":{"move_item_to_group":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.MoveItem(context.Background(), "11", "topics")
+				return err
+			},
+		},
+		{
+			name:  "move item to board",
+			op:    "MoveItemToBoard",
+			reply: `{"data":{"move_item_to_board":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.MoveItemToBoard(context.Background(), "11", "7", "topics")
+				return err
+			},
+		},
+		{
+			name:  "duplicate item",
+			op:    "DuplicateItem",
+			reply: `{"data":{"duplicate_item":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.DuplicateItem(context.Background(), "7", "11", false)
+				return err
+			},
+		},
+		{
+			name:  "archive item",
+			op:    "ArchiveItem",
+			reply: `{"data":{"archive_item":{}}}`,
+			call: func(client *Client) error {
+				_, err := client.ArchiveItem(context.Background(), "11")
+				return err
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, _ := newContractClient(t, tt.op, tt.reply)
+			if err := tt.call(client); err == nil || !strings.Contains(err.Error(), "incomplete") {
+				t.Fatalf("err = %v, want incomplete response error", err)
+			}
+		})
+	}
+}

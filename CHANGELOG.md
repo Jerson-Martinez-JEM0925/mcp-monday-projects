@@ -20,6 +20,8 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+- **Item mutation response validation**: item mutations now reject provider responses missing `item_id` instead of returning zero-value items; troubleshooting documents reconciliation before retrying.
+
 ## [1.4.0] — Governed HTTP and model-directed tools
 
 ### Added
