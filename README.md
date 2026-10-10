@@ -134,6 +134,7 @@ The server is built with the Go 1.27.1 toolchain image; `go.mod` requires Go
 |---|---|
 | [docs/SETUP.md](docs/SETUP.md) | Token, versioning, MCP client configuration, validation |
 | [docs/USAGE.md](docs/USAGE.md) | Task-oriented guide: find, read, write, bulk, reports, templates |
+| [docs/UPDATE_FORMATTING.md](docs/UPDATE_FORMATTING.md) | Monday update HTML formatting, sanitization and verification |
 | [docs/TOOLS.md](docs/TOOLS.md) | Generated tool reference, conventions, examples, prompts |
 | [docs/COLUMN_VALUES.md](docs/COLUMN_VALUES.md) | Accepted value formats and rejection rules |
 | [docs/CAPABILITIES.md](docs/CAPABILITIES.md) | Capability matrix, access levels, profiles, workspace scope, write policy |

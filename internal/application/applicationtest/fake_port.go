@@ -308,6 +308,10 @@ func (f *FakePort) CreateUpdate(_ context.Context, itemID, body, _ string) (*dom
 	return &domain.Update{ID: f.id(), ItemID: itemID, Body: body}, f.record("create_update")
 }
 func (f *FakePort) LikeUpdate(context.Context, string) error { return f.record("like_update") }
+
+func (f *FakePort) EditUpdate(_ context.Context, updateID, body string) (*domain.Update, error) {
+	return &domain.Update{ID: updateID, Body: body}, f.record("edit_update")
+}
 func (f *FakePort) CreateNotification(context.Context, string, string, string, string) error {
 	return f.record("create_notification")
 }

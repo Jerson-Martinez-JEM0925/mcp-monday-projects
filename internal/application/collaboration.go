@@ -100,13 +100,14 @@ func (s *Service) CreateUpdate(ctx context.Context, itemID, body string) (*domai
 	if err := requireText("body", body); err != nil {
 		return nil, err
 	}
-	if len(body) > maxUpdateBody {
-		return nil, invalid("body exceeds %d characters", maxUpdateBody)
+	formatted := monday.FormatUpdateBody(body)
+	if len(formatted) > maxUpdateBody {
+		return nil, invalid("formatted body exceeds %d characters", maxUpdateBody)
 	}
 	if _, err := s.checkItem(ctx, itemID); err != nil {
 		return nil, err
 	}
-	return s.port.CreateUpdate(ctx, itemID, body, "")
+	return s.port.CreateUpdate(ctx, itemID, formatted, "")
 }
 
 // ReplyToUpdate replies to an update. itemID is needed for guard checks.
@@ -120,16 +121,54 @@ func (s *Service) ReplyToUpdate(ctx context.Context, itemID, updateID, body stri
 	if err := requireText("body", body); err != nil {
 		return nil, err
 	}
-	if len(body) > maxUpdateBody {
-		return nil, invalid("body exceeds %d characters", maxUpdateBody)
+	formatted := monday.FormatUpdateBody(body)
+	if len(formatted) > maxUpdateBody {
+		return nil, invalid("formatted body exceeds %d characters", maxUpdateBody)
 	}
 	if _, err := s.checkItem(ctx, itemID); err != nil {
 		return nil, err
 	}
-	return s.port.CreateUpdate(ctx, "", body, updateID)
+	return s.port.CreateUpdate(ctx, "", formatted, updateID)
 }
 
 // LikeUpdate likes an update.
+
+// EditUpdate replaces an existing update body without creating a duplicate.
+// The update must belong to itemID, which is checked against workspace and
+// board write policy before the provider mutation is reached.
+func (s *Service) EditUpdate(ctx context.Context, itemID, updateID, body string) (*domain.Update, error) {
+	if err := requireID("item_id", itemID); err != nil {
+		return nil, err
+	}
+	if err := requireID("update_id", updateID); err != nil {
+		return nil, err
+	}
+	if err := requireText("body", body); err != nil {
+		return nil, err
+	}
+	formatted := monday.FormatUpdateBody(body)
+	if len(formatted) > maxUpdateBody {
+		return nil, invalid("formatted body exceeds %d characters", maxUpdateBody)
+	}
+	if _, err := s.checkItem(ctx, itemID); err != nil {
+		return nil, err
+	}
+	updates, err := s.port.ListItemUpdates(ctx, itemID, 100)
+	if err != nil {
+		return nil, err
+	}
+	for _, update := range updates {
+		if update.ID == updateID {
+			return s.port.EditUpdate(ctx, updateID, formatted)
+		}
+		for _, reply := range update.Replies {
+			if reply.ID == updateID {
+				return s.port.EditUpdate(ctx, updateID, formatted)
+			}
+		}
+	}
+	return nil, invalid("update %s is not among the latest 100 updates of item %s", updateID, itemID)
+}
 func (s *Service) LikeUpdate(ctx context.Context, itemID, updateID string) error {
 	if err := requireID("item_id", itemID); err != nil {
 		return err

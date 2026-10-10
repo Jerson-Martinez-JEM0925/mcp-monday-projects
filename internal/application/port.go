@@ -58,6 +58,7 @@ type Port interface {
 	ListItemUpdates(ctx context.Context, itemID string, limit int) ([]domain.Update, error)
 	ListBoardUpdates(ctx context.Context, boardID string, limit int) ([]domain.Update, error)
 	CreateUpdate(ctx context.Context, itemID, body, parentID string) (*domain.Update, error)
+	EditUpdate(ctx context.Context, updateID, body string) (*domain.Update, error)
 	LikeUpdate(ctx context.Context, updateID string) error
 	CreateNotification(ctx context.Context, userID, targetID, targetType, text string) error
 	ListTags(ctx context.Context, ids []string) ([]domain.Tag, error)

@@ -76,6 +76,13 @@ type ReplyInput struct {
 	Body     string `json:"body" jsonschema:"reply body"`
 }
 
+// EditUpdateInput replaces an existing update body without creating a new update.
+type EditUpdateInput struct {
+	ItemID   string `json:"item_id" jsonschema:"item that owns the update"`
+	UpdateID string `json:"update_id" jsonschema:"update to edit"`
+	Body     string `json:"body" jsonschema:"new update body (Markdown-like input, max 20000 chars)"`
+}
+
 // LikeInput likes an update.
 type LikeInput struct {
 	ItemID   string `json:"item_id" jsonschema:"item that owns the update (used for the write policy)"`
@@ -192,6 +199,15 @@ func registerCollaborationTools(r *registry) {
 			update, err := svc.ReplyToUpdate(ctx, in.ItemID, in.UpdateID, in.Body)
 			if err != nil {
 				return UpdateOutput{}, wrap("reply to update", err)
+			}
+			return UpdateOutput{Update: *update}, nil
+		})
+	add(r, ToolSpec{Name: "edit_update", Category: CatCollab, Title: "Edit update",
+		Description: "Replace an existing update body in place; the update must belong to the supplied item."},
+		func(ctx context.Context, in EditUpdateInput) (UpdateOutput, error) {
+			update, err := svc.EditUpdate(ctx, in.ItemID, in.UpdateID, in.Body)
+			if err != nil {
+				return UpdateOutput{}, wrap("edit update", err)
 			}
 			return UpdateOutput{Update: *update}, nil
 		})

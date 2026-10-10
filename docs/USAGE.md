@@ -174,3 +174,19 @@ make probe TOOL=list_boards ARGS='{"limit": 5}'
 python3 scripts/mcp_probe.py server_info '{}' -e MCP_ACCESS_LEVEL=read
 python3 scripts/mcp_probe.py --list -e MCP_ACCESS_LEVEL=full
 ```
+
+## 11. Format updates for Monday
+
+`create_update` and `reply_to_update` convert Markdown-like input to sanitized HTML before sending it to Monday. Monday does not render GitHub Markdown in update bodies, so headings, lists, links, tables, inline backticks and fenced commands must pass through this formatter. Raw HTML is escaped so placeholders and technical content remain visible instead of being removed by sanitization.
+
+See [UPDATE_FORMATTING.md](UPDATE_FORMATTING.md) for the supported syntax, security rules and a read-back probe using an existing item.
+
+### Editar un update existente sin duplicarlo
+
+El tool `edit_update` usa la mutation oficial `edit_update(id, body)` de Monday. Recibe `item_id`, `update_id` y el nuevo body Markdown-like; verifica que el update pertenezca al item, aplica el mismo renderer HTML seguro y reemplaza el body en el mismo update.
+
+```json
+{"name":"edit_update","arguments":{"item_id":"1234567890","update_id":"9876543210","body":"## Validación actualizada\\n\\n```bash\\nkubectl get pods -A\\n```"}}
+```
+
+Use `edit_update` para corregir formato o migrar comentarios existentes. No cree un nuevo `create_update` si la intención es preservar el historial y el enlace del comentario.

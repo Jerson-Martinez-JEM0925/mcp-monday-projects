@@ -231,6 +231,10 @@ func TestPeopleAndCollaborationQueries(t *testing.T) {
 	if err != nil || complexity.Query != 10 || version.Value != "2026-07" {
 		t.Fatalf("status = %+v %+v err=%v", complexity, version, err)
 	}
+	edited, c4 := newContractClient(t, "EditUpdate", `{"data":{"edit_update":{"id":"u2","body":"<p>edited</p>"}}}`)
+	if update, err := edited.EditUpdate(context.Background(), "u2", "<p>edited</p>"); err != nil || update.ID != "u2" || c4.variables["updateID"] != "u2" {
+		t.Fatalf("edit vars = %v update=%+v err=%v", c4.variables, update, err)
+	}
 }
 
 func TestUpdateBoardDetectsRejectedMutation(t *testing.T) {

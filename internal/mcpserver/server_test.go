@@ -21,7 +21,7 @@ import (
 )
 
 // expectedToolCount is the write-level catalog; full adds the delete tools.
-const expectedToolCount = 83
+const expectedToolCount = 84
 
 const expectedDeleteTools = 7
 
@@ -435,7 +435,7 @@ func TestStableToolSchemas(t *testing.T) {
 	}
 	sum := sha256.Sum256(raw)
 	got := hex.EncodeToString(sum[:])
-	const expected = "c5e5040153f4e1a7415b0d47270e38b4c4432ec058996d9c7fa844bf2a9546c5"
+	const expected = "49ad7ebdcde13543d39d4edf79d6f4bd8981bf8cf2bac2476bb70463ca848918"
 	if got != expected {
 		t.Fatalf("stable tool schema digest changed: got %s; update intentionally with release notes", got)
 	}

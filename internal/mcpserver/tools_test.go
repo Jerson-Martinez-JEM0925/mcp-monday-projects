@@ -92,7 +92,9 @@ func TestEveryToolIsCallable(t *testing.T) {
 		"create_update":      {"item_id": "500", "body": "hi"},
 		"reply_to_update":    {"item_id": "500", "update_id": "77", "body": "ok"},
 		"like_update":        {"item_id": "500", "update_id": "77"},
-		"notify_user":        {"user_id": "1", "target_id": "500", "text": "ping"},
+
+		"edit_update": {"item_id": "500", "update_id": "77", "body": "## edited"},
+		"notify_user": {"user_id": "1", "target_id": "500", "text": "ping"},
 
 		"list_tags":         nil,
 		"create_or_get_tag": {"name": "ops"},

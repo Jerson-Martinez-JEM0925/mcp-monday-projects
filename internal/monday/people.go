@@ -40,6 +40,10 @@ const createUpdateMutation = `mutation CreateUpdate($itemID: ID, $body: String!,
   create_update(item_id: $itemID, body: $body, parent_id: $parentID) { id body text_body created_at item_id creator { id name } }
 }`
 
+const editUpdateMutation = `mutation EditUpdate($updateID: ID!, $body: String!) {
+  edit_update(id: $updateID, body: $body) { id body text_body created_at item_id creator { id name } }
+}`
+
 const likeUpdateMutation = `mutation LikeUpdate($updateID: ID!) {
   like_update(update_id: $updateID) { id }
 }`
@@ -171,6 +175,17 @@ func (c *Client) CreateUpdate(ctx context.Context, itemID, body, parentID string
 	}
 	vars := map[string]any{"itemID": optional(itemID), "body": body, "parentID": optional(parentID)}
 	if err := c.Do(ctx, createUpdateMutation, vars, &data); err != nil {
+		return nil, err
+	}
+	return &data.Update, nil
+}
+
+// EditUpdate replaces the HTML-formatted body of an existing update.
+func (c *Client) EditUpdate(ctx context.Context, updateID, body string) (*domain.Update, error) {
+	var data struct {
+		Update domain.Update `json:"edit_update"`
+	}
+	if err := c.Do(ctx, editUpdateMutation, map[string]any{"updateID": updateID, "body": body}, &data); err != nil {
 		return nil, err
 	}
 	return &data.Update, nil

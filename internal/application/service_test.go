@@ -210,11 +210,16 @@ func TestSnapshotPagesAndTruncates(t *testing.T) {
 
 func TestCollaborationFlows(t *testing.T) {
 	svc, port := newService(nil)
-	if _, err := svc.CreateUpdate(ctx, "500", "<p>hi</p>"); err != nil {
-		t.Fatal(err)
+	created, err := svc.CreateUpdate(ctx, "500", "**hi**")
+	if err != nil || created.Body != "<p><strong>hi</strong></p>" {
+		t.Fatalf("created update = %+v err=%v", created, err)
 	}
 	if _, err := svc.ReplyToUpdate(ctx, "500", "77", "ok"); err != nil {
 		t.Fatal(err)
+	}
+	edited, err := svc.EditUpdate(ctx, "500", "77", "## edited")
+	if err != nil || edited.Body != "<h2>edited</h2>" {
+		t.Fatalf("edited update = %+v err=%v", edited, err)
 	}
 	if err := svc.LikeUpdate(ctx, "500", "77"); err != nil {
 		t.Fatal(err)
@@ -225,7 +230,7 @@ func TestCollaborationFlows(t *testing.T) {
 	if _, err := svc.GetUser(ctx, "404"); !monday.IsNotFound(err) {
 		t.Fatalf("missing user err = %v", err)
 	}
-	if got := strings.Join(port.Mutations, ","); got != "create_update,create_update,like_update,create_notification" {
+	if got := strings.Join(port.Mutations, ","); got != "create_update,create_update,edit_update,like_update,create_notification" {
 		t.Fatalf("mutations = %s", got)
 	}
 }

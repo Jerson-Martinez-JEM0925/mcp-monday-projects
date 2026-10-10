@@ -23,7 +23,7 @@ and an actionable message; the token and raw API payloads are never echoed.
 
 <!-- tools:begin -->
 
-_79 tools, generated from `list_tool_catalog`._
+_91 tools, generated from `list_tool_catalog`._
 
 ### Diagnostics
 
@@ -32,7 +32,8 @@ _79 tools, generated from `list_tool_catalog`._
 | `get_api_status` | read | `account.read` | Return monday's remaining per-minute complexity budget, reset time, and the API version that served the request. |
 | `get_me` | read | `account.read` | Return the user and account behind the configured token (connectivity check). Never returns the token. |
 | `list_tool_catalog` | read | `account.read` | List every registered tool with its category, read-only/destructive hints, and required capability. Optionally filter by category. |
-| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name. |
+| `quality_diagnostics` | read | `account.read` | Inspect the effective catalog for missing metadata and report read/write/destructive counts without exposing secrets. |
+| `server_info` | read | `account.read` | Return safe server metadata: version, runtime, API version, tool count, the active profile (MCP_PROFILE), the access level (MCP_ACCESS_LEVEL), the effective write policy (allowlists), and the workspace scope (MONDAY_WORKSPACE_ID) with its resolved name. |
 
 ### Workspaces and folders
 
@@ -84,11 +85,15 @@ _79 tools, generated from `list_tool_catalog`._
 |---|---|---|---|
 | `find_items_by_column_values` | read | `items.read` | Find items whose columns exactly match given display values (e.g. status=Done and environment=prod). |
 | `get_item` | read | `items.read` | Get one item with its board, group, creator, column values, and subitems. |
+| `get_item_context` | read | `items.read` | Return a compact item projection with derived status, owner, priority, due date, age, and missing signals. |
 | `get_items` | read | `items.read` | Get up to 100 items by ID in one request. |
+| `item_integration_payload` | read | `items.read` | Build a stable idempotent payload for synchronizing a Monday item with GitHub, n8n, or another system. |
 | `list_group_items` | read | `items.read` | Read one cursor page of items in a single group. |
 | `list_items` | read | `items.read` | Read one cursor page of board items with column values; pass the returned cursor to continue. Supports server-side filter rules. |
+| `list_items_all` | read | `items.read` | Load all visible board items up to explicit max_items/max_pages bounds and report truncation warnings. |
 | `list_subitems` | read | `items.read` | List the subitems of an item. |
 | `search_items` | read | `items.read` | Search a board for items whose name contains text, optionally combined with filter rules (status any_of, date within_the_next, etc.). |
+| `search_items_all` | read | `items.read` | Search all visible items with a bounded result set and explicit truncation metadata. |
 | `validate_column_values` | read | `items.read` | Dry-run: validate friendly column values against a board schema and return the exact monday JSON that a write would send, or per-column issues. |
 
 ### Items — write
@@ -97,7 +102,7 @@ _79 tools, generated from `list_tool_catalog`._
 |---|---|---|---|
 | `archive_item` | write · archive | `items.write` | Archive (never delete) a monday.com item; it can be restored from monday's archive. |
 | `assign_item_people` | write | `items.write` | Assign users or teams to an item's people column (auto-detected); an empty list clears it. |
-| `create_item` | write | `items.write` | Create an item; when `group_id` is supplied it must identify an active group on the target board, and column values are validated before monday is called. An incomplete provider response is returned as an actionable error. |
+| `create_item` | write | `items.write` | Create an item; column values are validated by type against the board schema before monday is called. |
 | `create_subitem` | write | `items.write` | Create a subitem under a parent item; values are validated against the subitems board. |
 | `duplicate_item` | write | `items.write` | Duplicate an item, optionally with its updates. |
 | `move_item` | write | `items.write` | Move a monday.com item to another group. |
@@ -128,7 +133,10 @@ _79 tools, generated from `list_tool_catalog`._
 
 | Tool | Mode | Capability | Description |
 |---|---|---|---|
+| `board_activity_summary` | read | `collaboration.read` | Summarize recent board updates by author and reply volume for standups and audits. |
 | `create_update` | write | `collaboration.write` | Post an update (comment) on an item. |
+| `edit_update` | write | `collaboration.write` | Replace an existing update body in place; the update must belong to the supplied item. |
+| `item_activity_summary` | read | `collaboration.read` | Summarize an item's update activity by author and reply count, including the latest update timestamp. |
 | `like_update` | write | `collaboration.write` | Like an update. |
 | `list_board_updates` | read | `collaboration.read` | List the most recent updates across a board — an activity feed. |
 | `list_item_updates` | read | `collaboration.read` | List an item's updates (comments) with replies and authors. |
@@ -147,11 +155,15 @@ _79 tools, generated from `list_tool_catalog`._
 | Tool | Mode | Capability | Description |
 |---|---|---|---|
 | `board_health_report` | read | `reports.read` | Score a board 0-100 (grade A-D) from overdue, blocked, stale, and unassigned work, with explained signals and Markdown. |
+| `board_risk_report` | read | `reports.read` | Return a compact, actionable risk view with due-soon, overdue, blocked, and unassigned items plus a 0-100 score. |
 | `board_summary` | read | `reports.read` | Summarize a board: items per group and status, completion %, overdue, blocked, and unassigned open work. |
 | `column_distribution` | read | `reports.read` | Count items by the display value of any column (priority, environment, owner, ...). |
 | `daily_standup` | read | `reports.read` | Standup digest for the last N hours: completed, in motion, blocked, and overdue, plus ready-to-paste Markdown. |
 | `export_board_csv` | read | `reports.read` | Export a board as RFC 4180 CSV (item id, name, group, updated_at, then columns). |
 | `export_board_markdown` | read | `reports.read` | Export a board as Markdown tables grouped by group. |
+| `find_blocked_items` | read | `reports.read` | Find items whose status indicates blocked, stuck, or stopped work. |
+| `find_due_soon_items` | read | `reports.read` | Find open items due within a configurable number of days, ordered by due date. |
+| `find_unassigned_items` | read | `reports.read` | Find open items without an owner, making staffing gaps explicit instead of silently treating unreadable owners as empty. |
 | `overdue_items` | read | `reports.read` | List open items whose due date has passed, most late first, with days late. |
 | `stale_items` | read | `reports.read` | List open items with no update for N days (default 14). |
 | `workload_report` | read | `reports.read` | Open, done, overdue, and blocked items per assignee of the owner column. |
