@@ -20,6 +20,8 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] — Markdown-to-HTML update formatting
+
 - **Monday update formatting:** `create_update` and `reply_to_update` now render Markdown-like input as sanitized HTML, preserving commands, tables, links, backticks and placeholders; `edit_update` replaces an existing body in place without duplicating comments.
 - **Item mutation response validation**: item mutations now reject provider responses missing `item_id` instead of returning zero-value items; troubleshooting documents reconciliation before retrying.
 
