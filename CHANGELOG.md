@@ -20,6 +20,8 @@ All notable changes are documented here. The format follows
 
 ## [Unreleased]
 
+- **Column writes validate against the item's real board.** `update_item_column_values`, `set_item_status`, `set_item_date` and the other single-column helpers now resolve the board the item actually lives on before validating and writing. monday accepts a column mutation against the wrong board and silently discards it (a no-op that still returns success); this happened most often with subitems, whose board has a different set of columns than the parent board. An unknown column on the item's board is now rejected with a clear `unknown column ID for this board` error instead of a false success.
+
 ## [1.5.0] — Markdown-to-HTML update formatting
 
 - **Monday update formatting:** `create_update` and `reply_to_update` now render Markdown-like input as sanitized HTML, preserving commands, tables, links, backticks and placeholders; `edit_update` replaces an existing body in place without duplicating comments.

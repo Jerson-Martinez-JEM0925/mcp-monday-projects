@@ -245,6 +245,15 @@ func (s *Service) CreateSubitem(ctx context.Context, parentID, name string, valu
 }
 
 // UpdateItemValues validates and applies column values in one mutation.
+//
+// The board the item actually lives on is resolved from the item itself, not
+// trusted from boardID. monday accepts a column_values mutation against the
+// wrong board and silently discards it (a no-op that still returns success);
+// this happens most often with subitems, which live on a separate subitems
+// board whose columns differ from the parent board. Resolving the real board
+// first makes validation run against the columns that actually exist on the
+// item, so a column that is not on the item's board is rejected with a clear
+// error instead of a false "ok".
 func (s *Service) UpdateItemValues(ctx context.Context, boardID, itemID string, values map[string]any) (*domain.Item, error) {
 	if err := requireID("board_id", boardID); err != nil {
 		return nil, err
@@ -255,14 +264,20 @@ func (s *Service) UpdateItemValues(ctx context.Context, boardID, itemID string, 
 	if len(values) == 0 {
 		return nil, invalid("column_values must contain at least one column")
 	}
-	if err := s.guard.CheckBoard(boardID); err != nil {
+	// Resolve the board the item really belongs to; it may differ from boardID
+	// (e.g. a subitem). Writing to the wrong board is a silent no-op on monday.
+	effectiveBoardID := boardID
+	if item, err := s.GetItem(ctx, itemID); err == nil && item != nil && item.BoardID != "" {
+		effectiveBoardID = item.BoardID
+	}
+	if err := s.guard.CheckBoard(effectiveBoardID); err != nil {
 		return nil, err
 	}
-	normalized, err := s.validated(ctx, boardID, values)
+	normalized, err := s.validated(ctx, effectiveBoardID, values)
 	if err != nil {
 		return nil, err
 	}
-	return s.port.UpdateItemValues(ctx, boardID, itemID, normalized)
+	return s.port.UpdateItemValues(ctx, effectiveBoardID, itemID, normalized)
 }
 
 // RenameItem changes an item's name.
