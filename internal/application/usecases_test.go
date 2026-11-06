@@ -57,8 +57,13 @@ func useCases(svc *application.Service) map[string]func() error {
 		"item_updates":   func() error { _, err := svc.ListItemUpdates(ctx, "500", 5); return err },
 		"board_updates":  func() error { _, err := svc.ListBoardUpdates(ctx, "100", 5); return err },
 		"create_update":  func() error { _, err := svc.CreateUpdate(ctx, "500", "hi"); return err },
-		"reply_update":   func() error { _, err := svc.ReplyToUpdate(ctx, "500", "77", "ok"); return err },
-		"like_update":    func() error { return svc.LikeUpdate(ctx, "500", "77") },
+		"file_to_update": func() error { _, err := svc.AddFileToUpdate(ctx, "77", "plan.txt", []byte("data")); return err },
+		"file_to_column": func() error {
+			_, err := svc.AddFileToColumn(ctx, "500", "files", "plan.txt", []byte("data"))
+			return err
+		},
+		"reply_update": func() error { _, err := svc.ReplyToUpdate(ctx, "500", "77", "ok"); return err },
+		"like_update":  func() error { return svc.LikeUpdate(ctx, "500", "77") },
 
 		"edit_update":        func() error { _, err := svc.EditUpdate(ctx, "500", "77", "## edited"); return err },
 		"notify":             func() error { return svc.Notify(ctx, "1", "500", "Project", "hi") },
@@ -156,6 +161,32 @@ func TestUseCaseValidationRejectsBeforeThePort(t *testing.T) {
 		"board_updates":    func() error { _, err := svc.ListBoardUpdates(ctx, "x", 5); return err },
 		"reply_body":       func() error { _, err := svc.ReplyToUpdate(ctx, "500", "77", ""); return err },
 		"reply_id":         func() error { _, err := svc.ReplyToUpdate(ctx, "500", "x", "ok"); return err },
+		"file_update_id":   func() error { _, err := svc.AddFileToUpdate(ctx, "x", "a.txt", []byte("d")); return err },
+		"file_update_name": func() error { _, err := svc.AddFileToUpdate(ctx, "77", "", []byte("d")); return err },
+		"file_update_empty": func() error {
+			_, err := svc.AddFileToUpdate(ctx, "77", "a.txt", nil)
+			return err
+		},
+		"file_column_item": func() error {
+			_, err := svc.AddFileToColumn(ctx, "x", "files", "a.txt", []byte("d"))
+			return err
+		},
+		"file_column_col": func() error {
+			_, err := svc.AddFileToColumn(ctx, "500", "", "a.txt", []byte("d"))
+			return err
+		},
+		"file_column_empty": func() error {
+			_, err := svc.AddFileToColumn(ctx, "500", "files", "a.txt", nil)
+			return err
+		},
+		"file_update_too_big": func() error {
+			_, err := svc.AddFileToUpdate(ctx, "77", "a.bin", make([]byte, application.MaxFileBytes+1))
+			return err
+		},
+		"file_column_too_big": func() error {
+			_, err := svc.AddFileToColumn(ctx, "500", "files", "a.bin", make([]byte, application.MaxFileBytes+1))
+			return err
+		},
 		"like_id":          func() error { return svc.LikeUpdate(ctx, "500", "") },
 		"notify_type":      func() error { return svc.Notify(ctx, "1", "500", "Board", "hi") },
 		"tags_ids":         func() error { _, err := svc.ListTags(ctx, []string{"x"}); return err },
