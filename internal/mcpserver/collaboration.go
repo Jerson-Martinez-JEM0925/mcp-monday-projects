@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 
 	"github.com/jersonmartinez/mcp-monday-projects/internal/domain"
@@ -87,6 +88,26 @@ type EditUpdateInput struct {
 type LikeInput struct {
 	ItemID   string `json:"item_id" jsonschema:"item that owns the update (used for the write policy)"`
 	UpdateID string `json:"update_id" jsonschema:"update to like"`
+}
+
+// AddFileToUpdateInput uploads a file to an update (comment).
+type AddFileToUpdateInput struct {
+	UpdateID      string `json:"update_id" jsonschema:"update (comment) to attach the file to"`
+	Filename      string `json:"filename" jsonschema:"file name shown in monday, e.g. report.md"`
+	ContentBase64 string `json:"content_base64" jsonschema:"file contents, base64-encoded"`
+}
+
+// AddFileToColumnInput uploads a file to a file-type column of an item.
+type AddFileToColumnInput struct {
+	ItemID        string `json:"item_id" jsonschema:"item that owns the file column"`
+	ColumnID      string `json:"column_id" jsonschema:"file-type column id"`
+	Filename      string `json:"filename" jsonschema:"file name shown in monday"`
+	ContentBase64 string `json:"content_base64" jsonschema:"file contents, base64-encoded"`
+}
+
+// FileOutput is the uploaded asset.
+type FileOutput struct {
+	Asset monday.FileAsset `json:"asset"`
 }
 
 // UpdateOutput wraps one update.
@@ -218,6 +239,32 @@ func registerCollaborationTools(r *registry) {
 				return OKOutput{}, wrap("like update", err)
 			}
 			return OKOutput{OK: true}, nil
+		})
+	add(r, ToolSpec{Name: "add_file_to_update", Category: CatCollab, Title: "Attach file to update",
+		Description: "Attach a file to an update (comment). Pass the file contents base64-encoded in content_base64; the server never reads a client path."},
+		func(ctx context.Context, in AddFileToUpdateInput) (FileOutput, error) {
+			content, err := base64.StdEncoding.DecodeString(in.ContentBase64)
+			if err != nil {
+				return FileOutput{}, wrap("decode content_base64", err)
+			}
+			asset, err := svc.AddFileToUpdate(ctx, in.UpdateID, in.Filename, content)
+			if err != nil {
+				return FileOutput{}, wrap("add file to update", err)
+			}
+			return FileOutput{Asset: *asset}, nil
+		})
+	add(r, ToolSpec{Name: "add_file_to_column", Category: CatCollab, Title: "Attach file to column",
+		Description: "Attach a file to a file-type column of an item. Pass the file contents base64-encoded in content_base64."},
+		func(ctx context.Context, in AddFileToColumnInput) (FileOutput, error) {
+			content, err := base64.StdEncoding.DecodeString(in.ContentBase64)
+			if err != nil {
+				return FileOutput{}, wrap("decode content_base64", err)
+			}
+			asset, err := svc.AddFileToColumn(ctx, in.ItemID, in.ColumnID, in.Filename, content)
+			if err != nil {
+				return FileOutput{}, wrap("add file to column", err)
+			}
+			return FileOutput{Asset: *asset}, nil
 		})
 	add(r, ToolSpec{Name: "notify_user", Category: CatCollab, Title: "Notify user",
 		Description: "Send a monday bell notification to a user about an item or update."},

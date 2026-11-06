@@ -60,6 +60,8 @@ type Port interface {
 	CreateUpdate(ctx context.Context, itemID, body, parentID string) (*domain.Update, error)
 	EditUpdate(ctx context.Context, updateID, body string) (*domain.Update, error)
 	LikeUpdate(ctx context.Context, updateID string) error
+	AddFileToUpdate(ctx context.Context, updateID, filename string, content []byte) (*monday.FileAsset, error)
+	AddFileToColumn(ctx context.Context, itemID, columnID, filename string, content []byte) (*monday.FileAsset, error)
 	CreateNotification(ctx context.Context, userID, targetID, targetType, text string) error
 	ListTags(ctx context.Context, ids []string) ([]domain.Tag, error)
 	CreateOrGetTag(ctx context.Context, boardID, name string) (*domain.Tag, error)

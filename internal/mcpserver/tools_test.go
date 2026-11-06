@@ -96,6 +96,9 @@ func TestEveryToolIsCallable(t *testing.T) {
 		"edit_update": {"item_id": "500", "update_id": "77", "body": "## edited"},
 		"notify_user": {"user_id": "1", "target_id": "500", "text": "ping"},
 
+		"add_file_to_update": {"update_id": "77", "filename": "report.md", "content_base64": "aGVsbG8="},
+		"add_file_to_column": {"item_id": "500", "column_id": "files", "filename": "report.md", "content_base64": "aGVsbG8="},
+
 		"list_tags":         nil,
 		"create_or_get_tag": {"name": "ops"},
 

@@ -307,6 +307,20 @@ func (f *FakePort) ListBoardUpdates(context.Context, string, int) ([]domain.Upda
 func (f *FakePort) CreateUpdate(_ context.Context, itemID, body, _ string) (*domain.Update, error) {
 	return &domain.Update{ID: f.id(), ItemID: itemID, Body: body}, f.record("create_update")
 }
+
+func (f *FakePort) AddFileToUpdate(_ context.Context, updateID, filename string, content []byte) (*monday.FileAsset, error) {
+	if err := f.record("add_file_to_update:" + updateID); err != nil {
+		return nil, err
+	}
+	return &monday.FileAsset{ID: f.id(), Name: filename, URL: "https://files.monday.com/" + filename}, nil
+}
+
+func (f *FakePort) AddFileToColumn(_ context.Context, itemID, columnID, filename string, content []byte) (*monday.FileAsset, error) {
+	if err := f.record("add_file_to_column:" + itemID); err != nil {
+		return nil, err
+	}
+	return &monday.FileAsset{ID: f.id(), Name: filename, URL: "https://files.monday.com/" + filename}, nil
+}
 func (f *FakePort) LikeUpdate(context.Context, string) error { return f.record("like_update") }
 
 func (f *FakePort) EditUpdate(_ context.Context, updateID, body string) (*domain.Update, error) {

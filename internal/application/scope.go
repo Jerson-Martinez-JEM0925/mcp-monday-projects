@@ -445,6 +445,14 @@ func (p *ScopedPort) CreateUpdate(ctx context.Context, itemID, body, parentID st
 	return p.Port.CreateUpdate(ctx, itemID, body, parentID)
 }
 
+// AddFileToColumn checks the item is in scope before uploading to its column.
+func (p *ScopedPort) AddFileToColumn(ctx context.Context, itemID, columnID, filename string, content []byte) (*monday.FileAsset, error) {
+	if err := p.checkItem(ctx, itemID); err != nil {
+		return nil, err
+	}
+	return p.Port.AddFileToColumn(ctx, itemID, columnID, filename, content)
+}
+
 // CreateOrGetTag checks the board when the tag is board-scoped; account-level
 // public tags pass through.
 func (p *ScopedPort) CreateOrGetTag(ctx context.Context, boardID, name string) (*domain.Tag, error) {

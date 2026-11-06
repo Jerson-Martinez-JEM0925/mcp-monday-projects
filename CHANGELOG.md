@@ -21,6 +21,7 @@ All notable changes are documented here. The format follows
 ## [Unreleased]
 
 - **Column writes validate against the item's real board.** `update_item_column_values`, `set_item_status`, `set_item_date` and the other single-column helpers now resolve the board the item actually lives on before validating and writing. monday accepts a column mutation against the wrong board and silently discards it (a no-op that still returns success); this happened most often with subitems, whose board has a different set of columns than the parent board. An unknown column on the item's board is now rejected with a clear `unknown column ID for this board` error instead of a false success.
+- **Attach files to updates and columns.** New `add_file_to_update` and `add_file_to_column` tools upload a file to an update (comment) or to a file-type column, via monday's GraphQL multipart file endpoint. The file contents are passed base64-encoded (`content_base64`), so the server never resolves a client path; uploads are bounded and write-guarded.
 
 ## [1.5.0] — Markdown-to-HTML update formatting
 

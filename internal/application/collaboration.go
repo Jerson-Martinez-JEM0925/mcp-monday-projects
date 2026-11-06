@@ -110,6 +110,53 @@ func (s *Service) CreateUpdate(ctx context.Context, itemID, body string) (*domai
 	return s.port.CreateUpdate(ctx, itemID, formatted, "")
 }
 
+// MaxFileBytes bounds a single file upload.
+const MaxFileBytes = 500 * 1024 * 1024 // 500 MiB, monday's per-file ceiling
+
+// AddFileToUpdate uploads a file to an update (comment). The caller supplies the
+// file name and its raw contents; the server never resolves a client path.
+func (s *Service) AddFileToUpdate(ctx context.Context, updateID, filename string, content []byte) (*monday.FileAsset, error) {
+	if err := requireID("update_id", updateID); err != nil {
+		return nil, err
+	}
+	if err := requireText("filename", filename); err != nil {
+		return nil, err
+	}
+	if len(content) == 0 {
+		return nil, invalid("file content is empty")
+	}
+	if len(content) > MaxFileBytes {
+		return nil, invalid("file exceeds the %d byte limit", MaxFileBytes)
+	}
+	if err := s.guard.CheckWrite(); err != nil {
+		return nil, err
+	}
+	return s.port.AddFileToUpdate(ctx, updateID, filename, content)
+}
+
+// AddFileToColumn uploads a file to a file-type column of an item.
+func (s *Service) AddFileToColumn(ctx context.Context, itemID, columnID, filename string, content []byte) (*monday.FileAsset, error) {
+	if err := requireID("item_id", itemID); err != nil {
+		return nil, err
+	}
+	if err := requireText("column_id", columnID); err != nil {
+		return nil, err
+	}
+	if err := requireText("filename", filename); err != nil {
+		return nil, err
+	}
+	if len(content) == 0 {
+		return nil, invalid("file content is empty")
+	}
+	if len(content) > MaxFileBytes {
+		return nil, invalid("file exceeds the %d byte limit", MaxFileBytes)
+	}
+	if _, err := s.checkItem(ctx, itemID); err != nil {
+		return nil, err
+	}
+	return s.port.AddFileToColumn(ctx, itemID, columnID, filename, content)
+}
+
 // ReplyToUpdate replies to an update. itemID is needed for guard checks.
 func (s *Service) ReplyToUpdate(ctx context.Context, itemID, updateID, body string) (*domain.Update, error) {
 	if err := requireID("item_id", itemID); err != nil {

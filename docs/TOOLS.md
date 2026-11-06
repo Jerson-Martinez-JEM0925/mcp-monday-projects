@@ -133,6 +133,8 @@ _91 tools, generated from `list_tool_catalog`._
 
 | Tool | Mode | Capability | Description |
 |---|---|---|---|
+| `add_file_to_column` | write | `collaboration.write` | Attach a file to a file-type column of an item (content passed base64-encoded). |
+| `add_file_to_update` | write | `collaboration.write` | Attach a file to an update/comment (content passed base64-encoded). |
 | `board_activity_summary` | read | `collaboration.read` | Summarize recent board updates by author and reply volume for standups and audits. |
 | `create_update` | write | `collaboration.write` | Post an update (comment) on an item. |
 | `edit_update` | write | `collaboration.write` | Replace an existing update body in place; the update must belong to the supplied item. |
