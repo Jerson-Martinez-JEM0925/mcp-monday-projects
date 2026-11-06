@@ -190,3 +190,33 @@ El tool `edit_update` usa la mutation oficial `edit_update(id, body)` de Monday.
 ```
 
 Use `edit_update` para corregir formato o migrar comentarios existentes. No cree un nuevo `create_update` si la intención es preservar el historial y el enlace del comentario.
+
+## 12. Trazabilidad y visibilidad por proyecto
+
+Prácticas para que un proyecto sea rastreable y fácil de reportar con las herramientas del servidor.
+
+### Vincular un item con un sistema de seguimiento externo
+
+Cuando un item también se rastrea en un sistema externo, publique la URL del registro externo en el item con un
+update formateado, de modo que el enlace quede **visible y clicable** (no implícito):
+
+```json
+{"name":"create_update","arguments":{"item_id":"<item_id>","body":"🔗 **Enlace externo:** [registro](https://<tracker>/<path>)"}}
+```
+
+El body admite Markdown y se renderiza como HTML (ver sección 11). Use `edit_update` para corregir el enlace sin
+duplicar el comentario. Escriba el enlace recíproco (la URL del item de Monday) desde el sistema externo, para que
+la trazabilidad funcione en ambos sentidos.
+
+### Clasificar por proyecto (visibilidad y reportes)
+
+- Aplique una etiqueta de la columna *Project* (status) con el nombre del proyecto a todos sus items con
+  `update_item_column_values` / `change_column_value` (`create_labels_if_missing` crea la etiqueta la primera
+  vez). Esto agrupa los tickets del proyecto y habilita reportes por proyecto.
+- Use `board_summary`, `workload_report` y `column_distribution` para generar reportes por proyecto (avance,
+  carga por asignado, distribución por estado) apoyándose en esa etiqueta y en el campo de estimación.
+
+### Asignar a todos los responsables
+
+- `assign_item_people` acepta **varios** `user_ids`: asigne a **todas** las personas responsables de un item en
+  una sola llamada (no reparta un item entre asignados distintos si el trabajo es conjunto).
